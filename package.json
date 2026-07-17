@@ -1,0 +1,25 @@
+{
+  "name": "journal-iq",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=@journal-iq/backend",
+    "dev:backend": "npm run dev --workspace=@journal-iq/backend",
+    "dev:api": "npm run dev --workspace=@journal-iq/backend",
+    "dev:mobile": "npm run start --workspace=@journal-iq/mobile",
+    "db:generate": "npm run db:generate --workspace=@journal-iq/backend",
+    "db:migrate": "npm run db:migrate --workspace=@journal-iq/backend",
+    "db:seed": "npm run db:seed --workspace=@journal-iq/backend",
+    "build:shared": "npm run build --workspace=@journal-iq/shared"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@types/react": "~19.1.10",
+    "typescript": "~5.9.2"
+  }
+}
