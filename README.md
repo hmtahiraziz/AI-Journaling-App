@@ -85,24 +85,5 @@ Scan the QR with Expo Go (SDK 54).
 - Account data export (JSON) + account delete
 - In-app Privacy Policy & Terms (signup consent, Settings, onboarding)
 
-## Legal pages (Play Console)
 
-Host `docs/legal/privacy.html` and `docs/legal/terms.html` on any static host, then paste those URLs into Google Play Console. Optionally set `EXPO_PUBLIC_PRIVACY_URL` / `EXPO_PUBLIC_TERMS_URL` in the mobile env for external linking later.
-
-Store listing copy (short + full description with the medical disclaimer) lives in `docs/store-listing.md`.
-
-## Crash reporting (Sentry)
-
-Sentry is deferred for Expo Go (conflicts with NativeWind’s Metro serializer). See `docs/sentry.md` for enabling it on EAS preview/production builds. Local development uses a no-op stub in `apps/mobile/src/lib/sentry.ts`.
-
-## Password reset deep links
-
-Reset emails use `journaliq://reset-password?token=…` (`MOBILE_RESET_URL`). Configure Gmail SMTP (`SMTP_*` in `apps/backend/.env`) with a Google App Password. Test on a **preview/production build** (not Expo Go): request forgot-password, tap the link, confirm the reset screen receives the token.
-```bash
-cd apps/mobile
-npx eas-cli login
-npx eas build -p android --profile preview
-```
-
-Add `eas.json` preview profile as needed after `eas init`.
 
