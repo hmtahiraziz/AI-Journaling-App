@@ -43,6 +43,11 @@
             }
           ]
         }
+      ],
+      "permissions": [
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
@@ -88,9 +93,11 @@
       "typedRoutes": true
     },
     "extra": {
+      "router": {},
       "eas": {
-        "projectId": "journal-iq-local"
+        "projectId": "5bb16ab8-f71e-4009-8f3f-4ff2a7ac3ff5"
       }
-    }
+    },
+    "owner": "technology726"
   }
 }
