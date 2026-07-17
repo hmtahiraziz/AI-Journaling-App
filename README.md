@@ -106,21 +106,3 @@ npx eas build -p android --profile preview
 
 Add `eas.json` preview profile as needed after `eas init`.
 
-## API overview
-
-| Method | Path | Auth |
-|--------|------|------|
-| POST | `/auth/signup` | — |
-| POST | `/auth/signin` | — |
-| POST | `/auth/signout` | Bearer |
-| POST | `/auth/refresh` | — |
-| POST | `/auth/forgot-password` | — |
-| POST | `/auth/reset-password` | — |
-| GET | `/prompts/today` | Bearer |
-| CRUD | `/journals` | Bearer |
-| POST | `/journals/:id/reflect` | Bearer |
-| GET/POST | `/moods`, GET `/moods/stats` | Bearer |
-| GET | `/insights/weekly` | Bearer |
-| GET/PATCH | `/me` | Bearer |
-| GET | `/me/export` | Bearer |
-| DELETE | `/me` | Bearer |
