@@ -17,7 +17,9 @@ import { useAuthStore } from "@/src/store/auth";
 // import { useLockStore } from "@/src/store/lock";
 import { useReminderStore, isExpoGo } from "@/src/store/reminders";
 import { useAvatarStore } from "@/src/store/avatar";
+import { useNotificationsStore } from "@/src/store/notifications";
 import { getErrorMessage } from "@/src/api/client";
+import { toast } from "@/src/lib/toast";
 import { displayName, avatarName } from "@/src/utils/displayName";
 import { showAvatarPicker } from "@/src/store/avatar";
 import { colors } from "@/src/theme/colors";
@@ -81,6 +83,7 @@ export default function SettingsScreen() {
   const user = useAuthStore((s) => s.user);
   const logoutLocal = useAuthStore((s) => s.logoutLocal);
   const clearAvatar = useAvatarStore((s) => s.clear);
+  const clearNotifications = useNotificationsStore((s) => s.clear);
   // TEMP: App Lock disabled
   // const { enabled, enableLock, disableLock } = useLockStore();
   const {
@@ -133,11 +136,15 @@ export default function SettingsScreen() {
         ]);
         return;
       }
-      Alert.alert("Reminders", result.reason || "Couldn’t enable reminders.");
+      toast.error(result.reason || "Couldn’t enable reminders");
       return;
     }
     if (result.limited && result.reason) {
-      Alert.alert("Reminders", result.reason);
+      toast.info(result.reason);
+    } else if (value) {
+      toast.success("Daily reminder on");
+    } else {
+      toast.info("Daily reminder off");
     }
   }
 
@@ -158,10 +165,10 @@ export default function SettingsScreen() {
           UTI: "public.json",
         });
       } else {
-        Alert.alert("Export ready", `Saved to ${path}`);
+        toast.success("Export saved on this device");
       }
     } catch (e) {
-      Alert.alert("Export failed", getErrorMessage(e));
+      toast.error(getErrorMessage(e, "Export failed"));
     } finally {
       setExporting(false);
     }
@@ -187,10 +194,12 @@ export default function SettingsScreen() {
                   try {
                     await deleteAccount();
                     clearAvatar();
+                    clearNotifications();
                     await logoutLocal();
+                    toast.success("Account deleted");
                     router.replace("/(auth)/signin");
                   } catch (e) {
-                    Alert.alert("Couldn’t delete", getErrorMessage(e));
+                    toast.error(getErrorMessage(e, "Couldn’t delete account"));
                   } finally {
                     setDeleting(false);
                   }
@@ -216,6 +225,8 @@ export default function SettingsScreen() {
           } catch (e) {
             console.warn(getErrorMessage(e));
           } finally {
+            clearAvatar();
+            clearNotifications();
             await logoutLocal();
             setLoading(false);
             router.replace("/(auth)/signin");

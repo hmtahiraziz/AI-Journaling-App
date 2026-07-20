@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Text, View, Alert, ActivityIndicator } from "react-native";
+import { Text, View, ActivityIndicator } from "react-native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Screen } from "@/src/components/Screen";
@@ -11,6 +11,7 @@ import { GlassCard } from "@/src/components/GlassCard";
 import { AppHeader } from "@/src/components/AppHeader";
 import { createMood, getMoodStats } from "@/src/api/journals.api";
 import { getErrorMessage } from "@/src/api/client";
+import { toast } from "@/src/lib/toast";
 import { colors } from "@/src/theme/colors";
 import { tabBarClearance } from "@/src/constants/tabBar";
 
@@ -30,9 +31,9 @@ export default function MoodScreen() {
       setScore(null);
       qc.invalidateQueries({ queryKey: ["mood-stats"] });
       qc.invalidateQueries({ queryKey: ["moods"] });
-      Alert.alert("Logged", "Your mood check-in is saved privately.");
+      toast.success("Mood check-in saved");
     },
-    onError: (e) => Alert.alert("Couldn’t save", getErrorMessage(e)),
+    onError: (e) => toast.error(getErrorMessage(e, "Couldn’t save mood")),
   });
 
   return (

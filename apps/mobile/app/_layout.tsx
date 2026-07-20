@@ -25,9 +25,11 @@ import { useAuthStore } from "@/src/store/auth";
 import { useOnboardingStore } from "@/src/store/onboarding";
 import { useAvatarStore } from "@/src/store/avatar";
 import { useReminderStore } from "@/src/store/reminders";
+import { useNotificationsStore } from "@/src/store/notifications";
 import { colors } from "@/src/theme/colors";
 import { initSentry, withSentry } from "@/src/lib/sentry";
 import { extractResetTokenFromUrl, isResetPasswordUrl } from "@/src/utils/resetLink";
+import { ToastHost } from "@/src/components/ToastHost";
 
 initSentry();
 SplashScreen.preventAutoHideAsync();
@@ -63,6 +65,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   } = useOnboardingStore();
   const hydrateAvatar = useAvatarStore((s) => s.hydrate);
   const hydrateReminders = useReminderStore((s) => s.hydrate);
+  const hydrateNotifications = useNotificationsStore((s) => s.hydrate);
 
   useEffect(() => {
     hydrate();
@@ -73,7 +76,8 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     hydrateAvatar(user?.id);
-  }, [user?.id, hydrateAvatar]);
+    void hydrateNotifications(user?.id);
+  }, [user?.id, hydrateAvatar, hydrateNotifications]);
 
   // TEMP: App Lock disabled — background/inactive → lock()
   // useEffect(() => {
@@ -178,6 +182,7 @@ function RootLayout() {
               {/* TEMP: App Lock disabled */}
               {/* <Stack.Screen name="lock" options={{ animation: "fade" }} /> */}
             </Stack>
+            <ToastHost />
           </AuthGate>
         </QueryClientProvider>
       </GestureHandlerRootView>

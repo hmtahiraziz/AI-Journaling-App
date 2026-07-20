@@ -8,6 +8,7 @@ import { Button } from "@/src/components/Button";
 import { GlassCard } from "@/src/components/GlassCard";
 import { signin } from "@/src/api/auth.api";
 import { getErrorMessage } from "@/src/api/client";
+import { toast } from "@/src/lib/toast";
 import { useAuthStore } from "@/src/store/auth";
 import { colors } from "@/src/theme/colors";
 
@@ -31,6 +32,7 @@ export default function SignInScreen() {
     try {
       const data = await signin({ email: email.trim(), password });
       setUser(data.user);
+      toast.success("Welcome back");
       router.replace("/(app)/(tabs)/home");
     } catch (e) {
       setError(getErrorMessage(e, "Sign in failed"));

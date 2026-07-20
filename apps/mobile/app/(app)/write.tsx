@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Text, View, Switch, Alert, Pressable } from "react-native";
+import { Text, View, Switch, Pressable } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Screen } from "@/src/components/Screen";
@@ -9,6 +9,7 @@ import { MoodPicker } from "@/src/components/MoodPicker";
 import { GlassCard } from "@/src/components/GlassCard";
 import { createJournal, createMood, getTodayPrompt, reflectOnJournal } from "@/src/api/journals.api";
 import { getErrorMessage } from "@/src/api/client";
+import { toast } from "@/src/lib/toast";
 import { colors } from "@/src/theme/colors";
 import { MEDICAL_DISCLAIMER } from "@/src/constants/disclaimer";
 
@@ -42,9 +43,10 @@ export default function WriteScreen() {
       qc.invalidateQueries({ queryKey: ["journals"] });
       qc.invalidateQueries({ queryKey: ["mood-stats"] });
       qc.invalidateQueries({ queryKey: ["weekly-insight"] });
+      toast.success(entry.reflection ? "Entry saved with reflection" : "Entry saved");
       router.replace(`/(app)/entry/${entry.id}`);
     },
-    onError: (e) => Alert.alert("Couldn’t save", getErrorMessage(e)),
+    onError: (e) => toast.error(getErrorMessage(e, "Couldn’t save entry")),
   });
 
   const helper = useMemo(() => {

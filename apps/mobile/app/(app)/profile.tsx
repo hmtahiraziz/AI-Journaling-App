@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Text, View, Pressable, Alert } from "react-native";
+import { Text, View, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { Screen } from "@/src/components/Screen";
 import { Field } from "@/src/components/Field";
@@ -8,6 +8,7 @@ import { GlassCard } from "@/src/components/GlassCard";
 import { AvatarInitials } from "@/src/components/AvatarInitials";
 import { fetchMe, updateProfile } from "@/src/api/auth.api";
 import { getErrorMessage } from "@/src/api/client";
+import { toast } from "@/src/lib/toast";
 import { useAuthStore } from "@/src/store/auth";
 import { displayName, avatarName, looksLikeEmail } from "@/src/utils/displayName";
 import { showAvatarPicker } from "@/src/store/avatar";
@@ -48,7 +49,7 @@ export default function ProfileScreen() {
         setUser(profile);
       } catch (e) {
         if (active) {
-          Alert.alert("Couldn’t load profile", getErrorMessage(e));
+          toast.error(getErrorMessage(e, "Couldn’t load profile"));
         }
       } finally {
         if (active) setFetching(false);
@@ -62,12 +63,12 @@ export default function ProfileScreen() {
   async function onSave() {
     const trimmed = name.trim();
     if (!trimmed) {
-      Alert.alert("Name required", "Please enter your display name.");
+      toast.info("Please enter your display name");
       return;
     }
     const tz = timezone.trim();
     if (!tz) {
-      Alert.alert("Timezone required", "Please enter your timezone (e.g. Asia/Kolkata).");
+      toast.info("Please enter your timezone (e.g. Asia/Kolkata)");
       return;
     }
 
@@ -75,11 +76,10 @@ export default function ProfileScreen() {
     try {
       const profile = await updateProfile({ name: trimmed, timezone: tz });
       setUser(profile);
-      Alert.alert("Profile updated", "Your changes have been saved.", [
-        { text: "OK", onPress: () => router.back() },
-      ]);
+      toast.success("Profile saved");
+      router.back();
     } catch (e) {
-      Alert.alert("Couldn’t save", getErrorMessage(e));
+      toast.error(getErrorMessage(e, "Couldn’t save profile"));
     } finally {
       setLoading(false);
     }

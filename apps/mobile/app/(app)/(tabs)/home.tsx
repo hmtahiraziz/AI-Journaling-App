@@ -11,6 +11,7 @@ import { MoodCarousel } from "@/src/components/MoodCarousel";
 import { StreakStrip } from "@/src/components/StreakStrip";
 import { listJournals, getTodayPrompt } from "@/src/api/journals.api";
 import { useAuthStore } from "@/src/store/auth";
+import { useInboxSync } from "@/src/hooks/useInboxSync";
 import { firstName } from "@/src/utils/displayName";
 import { computeStreak } from "@/src/utils/streaks";
 import { colors } from "@/src/theme/colors";
@@ -28,6 +29,8 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
   const name = firstName(user?.name);
+
+  useInboxSync(Boolean(user?.id));
 
   const promptQuery = useQuery({ queryKey: ["prompt-today"], queryFn: getTodayPrompt });
   const journalsQuery = useQuery({ queryKey: ["journals"], queryFn: listJournals });

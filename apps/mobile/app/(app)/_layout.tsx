@@ -6,6 +6,7 @@ export default function AppLayout() {
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="write" options={{ presentation: "card" }} />
       <Stack.Screen name="profile" options={{ presentation: "card" }} />
+      <Stack.Screen name="notifications" options={{ presentation: "card" }} />
       <Stack.Screen name="entry/[id]" />
     </Stack>
   );

@@ -1,8 +1,8 @@
 import { Image, Pressable, Text, View } from "react-native";
 import { useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AvatarInitials } from "@/src/components/AvatarInitials";
+import { NotificationBell } from "@/src/components/NotificationBell";
 import { useAuthStore } from "@/src/store/auth";
 import { colors } from "@/src/theme/colors";
 import { type } from "@/src/theme/typography";
@@ -14,9 +14,16 @@ type Props = {
   showBrand?: boolean;
   /** When true, apply insets.top (use if parent does not already pad for status bar). */
   includeTopInset?: boolean;
+  /** Bell + badge — on by default for Home chrome. */
+  showNotifications?: boolean;
 };
 
-export function AppHeader({ title, showBrand = true, includeTopInset = false }: Props) {
+export function AppHeader({
+  title,
+  showBrand = true,
+  includeTopInset = false,
+  showNotifications = true,
+}: Props) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
@@ -56,23 +63,7 @@ export function AppHeader({ title, showBrand = true, includeTopInset = false }: 
       )}
 
       <View className="flex-row items-center gap-3">
-        <Pressable
-          onPress={() => {}}
-          hitSlop={8}
-          accessibilityLabel="Notifications"
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 20,
-            borderWidth: 1,
-            borderColor: colors.glassBorder,
-            backgroundColor: colors.glassStrong,
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Ionicons name="notifications-outline" size={18} color={colors.ink} />
-        </Pressable>
+        <NotificationBell visible={showNotifications} />
         <Pressable
           onPress={() => router.push("/(app)/profile")}
           hitSlop={8}

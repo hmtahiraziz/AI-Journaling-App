@@ -18,6 +18,7 @@ import { GlassCard } from "@/src/components/GlassCard";
 import { AppHeader } from "@/src/components/AppHeader";
 import { deleteJournal, listJournals, type JournalEntry } from "@/src/api/journals.api";
 import { getErrorMessage } from "@/src/api/client";
+import { toast } from "@/src/lib/toast";
 import { colors } from "@/src/theme/colors";
 import { tabBarClearance } from "@/src/constants/tabBar";
 
@@ -93,8 +94,9 @@ export default function JournalListScreen() {
     onSuccess: () => {
       setMenuId(null);
       qc.invalidateQueries({ queryKey: ["journals"] });
+      toast.success("Entry deleted");
     },
-    onError: (e) => Alert.alert("Couldn’t delete", getErrorMessage(e)),
+    onError: (e) => toast.error(getErrorMessage(e, "Couldn’t delete entry")),
   });
 
   const filtered = useMemo(() => {

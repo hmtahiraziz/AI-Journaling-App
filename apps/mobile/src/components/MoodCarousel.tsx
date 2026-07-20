@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pressable, Text, View, Alert } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { GlassCard } from "@/src/components/GlassCard";
@@ -7,6 +7,7 @@ import { Button } from "@/src/components/Button";
 import { MOODS } from "@/src/constants/moods";
 import { createMood } from "@/src/api/journals.api";
 import { getErrorMessage } from "@/src/api/client";
+import { toast } from "@/src/lib/toast";
 import { colors } from "@/src/theme/colors";
 import { type } from "@/src/theme/typography";
 
@@ -28,9 +29,9 @@ export function MoodCarousel({ title = "How are you feeling now?" }: Props) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["mood-stats"] });
       qc.invalidateQueries({ queryKey: ["moods"] });
-      Alert.alert("Checked in", "Your mood is saved privately.");
+      toast.success("Mood saved privately");
     },
-    onError: (e) => Alert.alert("Couldn’t save", getErrorMessage(e)),
+    onError: (e) => toast.error(getErrorMessage(e, "Couldn’t save mood")),
   });
 
   function prev() {

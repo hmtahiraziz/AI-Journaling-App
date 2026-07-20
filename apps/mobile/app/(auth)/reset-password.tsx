@@ -7,6 +7,7 @@ import { Button } from "@/src/components/Button";
 import { GlassCard } from "@/src/components/GlassCard";
 import { resetPassword } from "@/src/api/auth.api";
 import { getErrorMessage } from "@/src/api/client";
+import { toast } from "@/src/lib/toast";
 import { colors } from "@/src/theme/colors";
 
 function firstParam(value: string | string[] | undefined): string {
@@ -44,6 +45,7 @@ export default function ResetPasswordScreen() {
     setLoading(true);
     try {
       await resetPassword(token, password);
+      toast.success("Password updated");
       setDone(true);
     } catch (e) {
       setError(getErrorMessage(e, "Reset failed"));

@@ -2,6 +2,7 @@ import { create } from "zustand";
 import * as FileSystem from "expo-file-system/legacy";
 import * as ImagePicker from "expo-image-picker";
 import { Alert, Platform } from "react-native";
+import { toast } from "@/src/lib/toast";
 
 const AVATAR_DIR = `${FileSystem.documentDirectory}avatars/`;
 
@@ -70,10 +71,11 @@ export const useAvatarStore = create<AvatarState>((set) => ({
       // cache-bust so Image reloads
       const stamped = `${dest}?t=${Date.now()}`;
       set({ uri: stamped });
+      toast.success("Profile photo updated");
       return true;
     } catch (e) {
       console.warn(e);
-      Alert.alert("Couldn’t save photo", "Please try another image.");
+      toast.error("Couldn’t save photo — try another image");
       return false;
     }
   },
@@ -112,9 +114,10 @@ export async function pickFromCamera(userId: string): Promise<boolean> {
     const dest = avatarPath(userId);
     await FileSystem.copyAsync({ from: result.assets[0].uri, to: dest });
     useAvatarStore.setState({ uri: `${dest}?t=${Date.now()}` });
+    toast.success("Profile photo updated");
     return true;
   } catch {
-    Alert.alert("Couldn’t save photo", "Please try again.");
+    toast.error("Couldn’t save photo — try again");
     return false;
   }
 }

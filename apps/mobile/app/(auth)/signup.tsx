@@ -8,6 +8,7 @@ import { Button } from "@/src/components/Button";
 import { GlassCard } from "@/src/components/GlassCard";
 import { signup } from "@/src/api/auth.api";
 import { getErrorMessage } from "@/src/api/client";
+import { toast } from "@/src/lib/toast";
 import { useAuthStore } from "@/src/store/auth";
 import { colors } from "@/src/theme/colors";
 import { MEDICAL_DISCLAIMER, MEDICAL_DISCLAIMER_SHORT } from "@/src/constants/disclaimer";
@@ -38,6 +39,7 @@ export default function SignUpScreen() {
     try {
       const data = await signup({ name: name.trim(), email: email.trim(), password });
       setUser(data.user);
+      toast.success("Welcome to Journal IQ");
       router.replace("/(app)/(tabs)/home");
     } catch (e) {
       setError(getErrorMessage(e, "Sign up failed"));
