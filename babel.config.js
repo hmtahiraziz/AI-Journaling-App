@@ -6,7 +6,8 @@ module.exports = function (api) {
       "nativewind/babel",
     ],
     plugins: [
-      require("babel-preset-expo/build/expo-router-plugin").expoRouterBabelPlugin,
+      require("babel-preset-expo/build/plugins/expo-router-plugin")
+        .expoRouterBabelPlugin,
     ],
   };
 };

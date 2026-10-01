@@ -16,10 +16,6 @@
     "build:shared": "npm run build --workspace=@journal-iq/shared"
   },
   "engines": {
-    "node": ">=20"
-  },
-  "devDependencies": {
-    "@types/react": "~19.1.10",
-    "typescript": "~5.9.2"
+    "node": ">=22.13"
   }
 }

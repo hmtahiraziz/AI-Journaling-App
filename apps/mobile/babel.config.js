@@ -9,7 +9,8 @@ module.exports = function (api) {
     // from its own install location (monorepo root). Our expo-router lives under
     // apps/mobile, so we force the inline transform here.
     plugins: [
-      require("babel-preset-expo/build/expo-router-plugin").expoRouterBabelPlugin,
+      require("babel-preset-expo/build/plugins/expo-router-plugin")
+        .expoRouterBabelPlugin,
     ],
   };
 };
