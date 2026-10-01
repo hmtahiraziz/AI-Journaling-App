@@ -85,5 +85,23 @@ Scan the QR with Expo Go (SDK 54).
 - Account data export (JSON) + account delete
 - In-app Privacy Policy & Terms (signup consent, Settings, onboarding)
 
+## Deploy API (Railway)
 
+Production image is built from the root `Dockerfile` (`railway.toml` uses `builder = "DOCKERFILE"`). Deploy **only** the backend service (not mobile).
+
+1. New Railway project → Deploy from GitHub → this repo.
+2. Keep **Root Directory** empty (repo root) so npm workspaces work.
+3. Confirm builder is **Dockerfile** (from `railway.toml`). If you switch back to Railpack, set Variable `RAILPACK_NO_SPA=1` and keep `railpack.json` (`provider: node`).
+4. Add Variables (see `.env.example`): `DATABASE_URL`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `NODE_ENV=production`, plus optional `OPENAI_API_KEY` / SMTP.
+5. Generate a public domain → confirm `https://YOUR-APP.up.railway.app/health`.
+6. Point mobile at it: `EXPO_PUBLIC_API_URL=https://YOUR-APP.up.railway.app`.
+7. Optional one-time seed: `npm run db:seed` against the production `DATABASE_URL`.
+
+Local equivalents of what Railway runs:
+
+```bash
+npm run build:backend    # shared + prisma generate + backend tsc
+npm run db:migrate       # prisma migrate deploy (pre-deploy)
+npm run start:backend    # node dist/index.js (binds 0.0.0.0:$PORT)
+```
 

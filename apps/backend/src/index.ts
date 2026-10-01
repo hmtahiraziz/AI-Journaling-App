@@ -21,8 +21,9 @@ app.use(
 );
 app.use(express.json({ limit: "1mb" }));
 
+/** Liveness probe — registered before auth / rate-limited routes. */
 app.get("/health", (_req, res) => {
-  res.json({ ok: true, service: "journal-iq-api" });
+  res.status(200).json({ ok: true, service: "journal-iq-api" });
 });
 
 const authLimiter = rateLimit({
@@ -51,6 +52,23 @@ app.use("/me", meRoutes);
 
 app.use(errorHandler);
 
-app.listen(env.PORT, () => {
-  console.log(`Journal IQ API listening on http://localhost:${env.PORT}`);
+const port = Number(process.env.PORT || 5000);
+const host = "0.0.0.0";
+
+const server = app.listen(port, host, () => {
+  console.log(`Journal IQ API listening on http://${host}:${port}`);
 });
+
+function shutdown(signal: string) {
+  console.log(`${signal} received, shutting down gracefully`);
+  server.close((err) => {
+    if (err) {
+      console.error("Error during shutdown", err);
+      process.exit(1);
+    }
+    process.exit(0);
+  });
+}
+
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));

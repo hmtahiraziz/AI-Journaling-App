@@ -1,21 +1,30 @@
 # Journal IQ API — Railway config (shared npm workspaces monorepo)
 #
-# Service setup:
-# - Root Directory: leave EMPTY (repo root) so workspaces resolve
-# - Do NOT deploy apps/mobile from this file
-# - Set DATABASE_URL, JWT_*, and optional OPENAI/SMTP in Railway Variables
-# - Generate a public domain, then set EXPO_PUBLIC_API_URL on mobile to that HTTPS URL
+# Service setup (dashboard):
+# - Root Directory: EMPTY / repository root (required for workspaces)
+# - Builder: DOCKERFILE (this file). Railpack alternative: set builder RAILPACK + Variable RAILPACK_NO_SPA=1
+# - Do NOT deploy apps/mobile from this service
+# - Variables: DATABASE_URL, JWT_ACCESS_SECRET, JWT_REFRESH_SECRET, NODE_ENV=production
+#   Optional: OPENAI_API_KEY, SMTP_*, EMAIL_FROM, MOBILE_RESET_URL, CLIENT_ORIGIN
+# - Generate a public domain; Railway proxies to the container PORT (set automatically)
+# - Point mobile EXPO_PUBLIC_API_URL at that HTTPS URL
+#
+# Why Dockerfile: Expo web.output=static in apps/mobile can make Railpack pick a non-Node
+# path (start.sh / npm not found). Dockerfile guarantees Node 22 + npm ci + build:backend.
 #
 # Docs: https://docs.railway.com/reference/config-as-code
 
 [build]
-builder = "RAILPACK"
-buildCommand = "npm run build:backend"
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
 watchPatterns = [
   "apps/backend/**",
   "packages/shared/**",
   "package.json",
   "package-lock.json",
+  "Dockerfile",
+  "railway.toml",
+  "railpack.json",
 ]
 
 [deploy]

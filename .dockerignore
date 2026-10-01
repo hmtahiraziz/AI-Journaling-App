@@ -1,0 +1,25 @@
+# Keep the Railway/Docker build context small. Mobile source is not needed for the API image;
+# apps/mobile/package.json is still copied explicitly in the Dockerfile for workspaces.
+node_modules
+**/node_modules
+.git
+.expo
+**/.expo
+**/dist
+**/.env
+**/.env.*
+!.env.example
+apps/mobile/app
+apps/mobile/src
+apps/mobile/assets
+apps/mobile/components
+apps/mobile/constants
+apps/mobile/scripts
+apps/mobile/.claude
+docs
+*.log
+.DS_Store
+coverage
+.turbo
+apps/mobile/android
+apps/mobile/ios
