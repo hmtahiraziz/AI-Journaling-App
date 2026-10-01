@@ -1,0 +1,27 @@
+# Journal IQ API — Railway config (shared npm workspaces monorepo)
+#
+# Service setup:
+# - Root Directory: leave EMPTY (repo root) so workspaces resolve
+# - Do NOT deploy apps/mobile from this file
+# - Set DATABASE_URL, JWT_*, and optional OPENAI/SMTP in Railway Variables
+# - Generate a public domain, then set EXPO_PUBLIC_API_URL on mobile to that HTTPS URL
+#
+# Docs: https://docs.railway.com/reference/config-as-code
+
+[build]
+builder = "RAILPACK"
+buildCommand = "npm run build:backend"
+watchPatterns = [
+  "apps/backend/**",
+  "packages/shared/**",
+  "package.json",
+  "package-lock.json",
+]
+
+[deploy]
+startCommand = "npm run start:backend"
+preDeployCommand = ["npm run db:migrate"]
+healthcheckPath = "/health"
+healthcheckTimeout = 120
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5
