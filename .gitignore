@@ -3,8 +3,6 @@ node_modules/
 dist/
 build/
 *.log
-.env
-.env.local
 apps/backend/.env
 apps/api/.env
 apps/mobile/.env
@@ -17,3 +15,4 @@ apps/api/prisma/*.db
 apps/mobile/android/
 apps/mobile/ios/
 .turbo/
+config.bat

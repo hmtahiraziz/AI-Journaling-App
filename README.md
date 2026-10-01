@@ -85,3 +85,5 @@ Scan the QR with Expo Go (SDK 54).
 - Account data export (JSON) + account delete
 - In-app Privacy Policy & Terms (signup consent, Settings, onboarding)
 
+
+
