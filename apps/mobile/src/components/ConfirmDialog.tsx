@@ -8,11 +8,14 @@ type Props = {
   message: string;
   confirmLabel?: string;
   cancelLabel?: string;
+  /** Hide cancel — single OK-style notice. */
+  hideCancel?: boolean;
   loading?: boolean;
   /** Soft destructive — ink text on glass, not system red alert. */
   destructive?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
+  children?: React.ReactNode;
 };
 
 /** Centered glass confirm — matches night / liquid-glass app theme. */
@@ -22,10 +25,12 @@ export function ConfirmDialog({
   message,
   confirmLabel = "Confirm",
   cancelLabel = "Cancel",
+  hideCancel,
   loading,
   destructive,
   onConfirm,
   onCancel,
+  children,
 }: Props) {
   return (
     <Modal
@@ -59,32 +64,28 @@ export function ConfirmDialog({
             padding: 22,
           }}
         >
-          <Text
-            className="font-display text-2xl mb-2"
-            style={{ color: colors.ink }}
-          >
+          <Text className="font-display text-2xl mb-2" style={{ color: colors.ink }}>
             {title}
           </Text>
-          <Text
-            className="font-sans text-base mb-6"
-            style={{ color: colors.muted, lineHeight: 22 }}
-          >
+          <Text className="font-sans text-base mb-2" style={{ color: colors.muted, lineHeight: 22 }}>
             {message}
           </Text>
-
-          <View style={{ gap: 10 }}>
+          {children}
+          <View style={{ gap: 10, marginTop: 16 }}>
             <Button
               title={confirmLabel}
               onPress={onConfirm}
               loading={loading}
               variant={destructive ? "secondary" : "primary"}
             />
-            <Button
-              title={cancelLabel}
-              onPress={onCancel}
-              disabled={loading}
-              variant="ghost"
-            />
+            {!hideCancel ? (
+              <Button
+                title={cancelLabel}
+                onPress={onCancel}
+                disabled={loading}
+                variant="ghost"
+              />
+            ) : null}
           </View>
         </View>
       </View>

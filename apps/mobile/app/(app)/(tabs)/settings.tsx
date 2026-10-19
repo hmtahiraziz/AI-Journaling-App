@@ -1,20 +1,24 @@
 import { useEffect, useState } from "react";
-import { Text, View, Switch, Alert, Pressable, Linking } from "react-native";
+import { Text, View, Switch, Pressable, Linking, TextInput } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useQueryClient } from "@tanstack/react-query";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import { Screen } from "@/src/components/Screen";
-// TEMP: App Lock disabled
-// import { Field } from "@/src/components/Field";
+import { Field } from "@/src/components/Field";
 import { Button } from "@/src/components/Button";
 import { GlassCard } from "@/src/components/GlassCard";
 import { AvatarInitials } from "@/src/components/AvatarInitials";
 import { AppHeader } from "@/src/components/AppHeader";
 import { signout, exportAccountData, deleteAccount } from "@/src/api/auth.api";
 import { useAuthStore } from "@/src/store/auth";
-// import { useLockStore } from "@/src/store/lock";
+import {
+  getBiometricAvailability,
+  useLockStore,
+  type BiometricAvailability,
+} from "@/src/store/lock";
 import { useReminderStore, isExpoGo } from "@/src/store/reminders";
 import { useAvatarStore } from "@/src/store/avatar";
 import { useNotificationsStore } from "@/src/store/notifications";
@@ -23,6 +27,7 @@ import { toast } from "@/src/lib/toast";
 import { displayName, avatarName } from "@/src/utils/displayName";
 import { colors } from "@/src/theme/colors";
 import { MEDICAL_DISCLAIMER } from "@/src/constants/disclaimer";
+import { ACCOUNT_DELETION_URL, SUPPORT_EMAIL } from "@/src/constants/support";
 import { tabBarClearance } from "@/src/constants/tabBar";
 import { ReminderTimeBlock } from "@/src/components/ReminderTimeBlock";
 import { ReminderTimeSheet } from "@/src/components/ReminderTimeSheet";
@@ -80,12 +85,18 @@ function SettingsRow({
 export default function SettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const queryClient = useQueryClient();
   const user = useAuthStore((s) => s.user);
   const logoutLocal = useAuthStore((s) => s.logoutLocal);
   const clearAvatar = useAvatarStore((s) => s.clear);
   const clearNotifications = useNotificationsStore((s) => s.clear);
-  // TEMP: App Lock disabled
-  // const { enabled, enableLock, disableLock } = useLockStore();
+  const {
+    enabled,
+    biometricEnabled,
+    enableLock,
+    disableLock,
+    setBiometricEnabled,
+  } = useLockStore();
   const {
     enabled: reminderOn,
     hour,
@@ -96,47 +107,77 @@ export default function SettingsScreen() {
     setTime: setReminderTime,
   } = useReminderStore();
 
-  // const [pin, setPin] = useState("");
+  const [pin, setPin] = useState("");
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [timeSheetOpen, setTimeSheetOpen] = useState(false);
   const [signOutOpen, setSignOutOpen] = useState(false);
-  /** null → warn → confirm (two-step delete) */
   const [deleteStep, setDeleteStep] = useState<null | "warn" | "confirm">(null);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [stepUpPassword, setStepUpPassword] = useState("");
+  const [bioInfo, setBioInfo] = useState<BiometricAvailability | null>(null);
+  const [notice, setNotice] = useState<{ title: string; message: string } | null>(null);
+  const [bioOfferOpen, setBioOfferOpen] = useState(false);
+  const [notifPermOpen, setNotifPermOpen] = useState(false);
+  const [notifPermMessage, setNotifPermMessage] = useState("");
 
   useEffect(() => {
     if (!reminderHydrated) hydrateReminders();
   }, [reminderHydrated, hydrateReminders]);
 
-  // TEMP: App Lock disabled
-  // async function onToggleLock(value: boolean) {
-  //   if (value) {
-  //     if (!/^\d{4,6}$/.test(pin)) {
-  //       Alert.alert("Choose a PIN", "Enter a 4–6 digit PIN below, then turn on app lock.");
-  //       return;
-  //     }
-  //     await enableLock(pin);
-  //     setPin("");
-  //     Alert.alert("App lock on", "Journal IQ will ask for your PIN after you leave the app.");
-  //   } else {
-  //     await disableLock();
-  //   }
-  // }
+  useEffect(() => {
+    void getBiometricAvailability().then(setBioInfo);
+  }, []);
+
+  async function finishEnableLock(withBiometric: boolean) {
+    await enableLock(pin, { enableBiometric: withBiometric });
+    setPin("");
+    setBioOfferOpen(false);
+    setNotice({
+      title: "App lock on",
+      message: withBiometric
+        ? "Journal IQ will ask for biometrics or your PIN after you leave the app. This is device-local and does not protect server data."
+        : "Journal IQ will ask for your PIN after you leave the app. This is device-local and does not protect server data.",
+    });
+  }
+
+  async function onToggleLock(value: boolean) {
+    if (value) {
+      if (!/^\d{4,6}$/.test(pin)) {
+        setNotice({
+          title: "Choose a PIN",
+          message: "Enter a 4–6 digit PIN below, then turn on app lock.",
+        });
+        return;
+      }
+      const avail = await getBiometricAvailability();
+      setBioInfo(avail);
+      if (avail.hasHardware && avail.enrolled) {
+        setBioOfferOpen(true);
+      } else {
+        await finishEnableLock(false);
+      }
+    } else {
+      await disableLock();
+    }
+  }
+
+  async function onToggleBiometric(value: boolean) {
+    const result = await setBiometricEnabled(value);
+    if (!result.ok) {
+      toast.error(result.reason || "Couldn’t update biometrics");
+      return;
+    }
+    toast.success(value ? "Biometric unlock on" : "Biometric unlock off");
+  }
 
   async function onToggleReminder(value: boolean) {
     const result = await setReminderEnabled(value);
     if (!result.ok) {
       if (result.openSettings) {
-        Alert.alert("Reminders need permission", result.reason || "Enable notifications to continue.", [
-          { text: "Not now", style: "cancel" },
-          {
-            text: "Open Settings",
-            onPress: () => {
-              void Linking.openSettings();
-            },
-          },
-        ]);
+        setNotifPermMessage(result.reason || "Enable notifications to continue.");
+        setNotifPermOpen(true);
         return;
       }
       toast.error(result.reason || "Couldn’t enable reminders");
@@ -151,10 +192,14 @@ export default function SettingsScreen() {
     }
   }
 
-  async function onExport() {
+  async function onExportConfirm() {
+    if (!stepUpPassword) {
+      toast.error("Enter your password to export");
+      return;
+    }
     setExporting(true);
     try {
-      const payload = await exportAccountData();
+      const payload = await exportAccountData(stepUpPassword);
       const path = `${FileSystem.cacheDirectory}journal-iq-export-${Date.now()}.json`;
       await FileSystem.writeAsStringAsync(path, JSON.stringify(payload, null, 2), {
         encoding: FileSystem.EncodingType.UTF8,
@@ -170,6 +215,13 @@ export default function SettingsScreen() {
       } else {
         toast.success("Export saved on this device");
       }
+      try {
+        await FileSystem.deleteAsync(path, { idempotent: true });
+      } catch {
+        /* best-effort cleanup */
+      }
+      setExportOpen(false);
+      setStepUpPassword("");
     } catch (e) {
       toast.error(getErrorMessage(e, "Export failed"));
     } finally {
@@ -178,13 +230,19 @@ export default function SettingsScreen() {
   }
 
   async function confirmDeleteAccount() {
+    if (!stepUpPassword) {
+      toast.error("Enter your password to delete your account");
+      return;
+    }
     setDeleting(true);
     try {
-      await deleteAccount();
+      await deleteAccount(stepUpPassword);
       clearAvatar();
       clearNotifications();
+      queryClient.clear();
       await logoutLocal();
       setDeleteStep(null);
+      setStepUpPassword("");
       toast.success("Account deleted");
       router.replace("/(auth)/signin");
     } catch (e) {
@@ -198,11 +256,12 @@ export default function SettingsScreen() {
     setLoading(true);
     try {
       await signout();
-    } catch (e) {
-      console.warn(getErrorMessage(e));
+    } catch {
+      /* still clear local state */
     } finally {
       clearAvatar();
       clearNotifications();
+      queryClient.clear();
       await logoutLocal();
       setLoading(false);
       setSignOutOpen(false);
@@ -321,7 +380,6 @@ export default function SettingsScreen() {
           }}
         />
 
-        {/* TEMP: App Lock disabled — Security / PIN UI
         <GlassCard className="mb-4">
           <Text
             className="font-sansMedium text-xs tracking-widest uppercase mb-1"
@@ -348,7 +406,7 @@ export default function SettingsScreen() {
                   App lock
                 </Text>
                 <Text className="font-sans text-sm mt-0.5" style={{ color: colors.muted }}>
-                  Optional PIN on this device
+                  Optional PIN on this device only
                 </Text>
               </View>
             </View>
@@ -357,6 +415,7 @@ export default function SettingsScreen() {
               onValueChange={onToggleLock}
               trackColor={{ true: colors.primary, false: "rgba(254,254,254,0.2)" }}
               thumbColor={colors.ink}
+              accessibilityLabel="App lock"
             />
           </View>
           {!enabled ? (
@@ -369,12 +428,39 @@ export default function SettingsScreen() {
               keyboardType="number-pad"
             />
           ) : (
-            <Text className="font-sans text-sm mb-1" style={{ color: colors.muted }}>
-              Lock is on. Turn off to remove your PIN.
-            </Text>
+            <>
+              <Text className="font-sans text-sm mb-2" style={{ color: colors.muted }}>
+                Lock is on. Turn off to remove your PIN. Does not protect server data.
+              </Text>
+              {bioInfo?.hasHardware ? (
+                <View className="flex-row items-center justify-between py-2">
+                  <View className="flex-1 pr-3">
+                    <Text className="font-sansMedium" style={{ color: colors.ink }}>
+                      Biometrics
+                    </Text>
+                    <Text className="font-sans text-sm mt-0.5" style={{ color: colors.muted }}>
+                      {bioInfo.enrolled
+                        ? "Unlock with biometrics after background"
+                        : "Enroll biometrics in system Settings first"}
+                    </Text>
+                  </View>
+                  <Switch
+                    value={biometricEnabled}
+                    onValueChange={onToggleBiometric}
+                    disabled={!bioInfo.enrolled}
+                    trackColor={{ true: colors.primary, false: "rgba(254,254,254,0.2)" }}
+                    thumbColor={colors.ink}
+                    accessibilityLabel="Unlock with biometrics"
+                  />
+                </View>
+              ) : (
+                <Text className="font-sans text-sm mb-1" style={{ color: colors.muted }}>
+                  Biometrics are not available on this device.
+                </Text>
+              )}
+            </>
           )}
         </GlassCard>
-        */}
 
         <GlassCard className="mb-4">
           <Text
@@ -386,15 +472,19 @@ export default function SettingsScreen() {
           <SettingsRow
             icon="download-outline"
             label="Export data"
-            value={exporting ? "Preparing export…" : "Download journals, moods & insights as JSON"}
+            value={exporting ? "Preparing export…" : "Requires password · JSON download"}
             onPress={() => {
               if (exporting) return;
-              void onExport();
+              setStepUpPassword("");
+              setExportOpen(true);
             }}
           />
           <View style={{ height: 1, backgroundColor: colors.glassBorder }} />
           <Pressable
-            onPress={() => setDeleteStep("warn")}
+            onPress={() => {
+              setStepUpPassword("");
+              setDeleteStep("warn");
+            }}
             disabled={deleting}
             className="min-h-[52px] flex-row items-center py-3.5"
           >
@@ -415,7 +505,7 @@ export default function SettingsScreen() {
                 {deleting ? "Deleting…" : "Delete account"}
               </Text>
               <Text className="font-sans text-sm mt-0.5" style={{ color: colors.muted }}>
-                Permanently erase everything
+                Requires password · permanently erase everything
               </Text>
             </View>
           </Pressable>
@@ -430,7 +520,7 @@ export default function SettingsScreen() {
           </Text>
           <Text className="font-sans text-sm leading-5 mb-2" style={{ color: colors.muted }}>
             {MEDICAL_DISCLAIMER} Entries and moods stay private to your account. AI reflections never
-            diagnose.
+            diagnose. Support: {SUPPORT_EMAIL}
           </Text>
           <SettingsRow
             icon="document-text-outline"
@@ -445,6 +535,28 @@ export default function SettingsScreen() {
             value="Not medical advice · your rights"
             onPress={() => router.push("/(legal)/terms")}
           />
+          {ACCOUNT_DELETION_URL ? (
+            <>
+              <View style={{ height: 1, backgroundColor: colors.glassBorder }} />
+              <SettingsRow
+                icon="globe-outline"
+                label="Delete account online"
+                value="Web request without reinstalling"
+                onPress={() => {
+                  void Linking.openURL(ACCOUNT_DELETION_URL);
+                }}
+              />
+            </>
+          ) : null}
+          <View style={{ height: 1, backgroundColor: colors.glassBorder }} />
+          <SettingsRow
+            icon="mail-outline"
+            label="Contact support"
+            value={SUPPORT_EMAIL}
+            onPress={() => {
+              void Linking.openURL(`mailto:${SUPPORT_EMAIL}`);
+            }}
+          />
         </GlassCard>
 
         <Button
@@ -452,6 +564,39 @@ export default function SettingsScreen() {
           onPress={() => setSignOutOpen(true)}
           loading={loading}
           variant="secondary"
+        />
+
+        <ConfirmDialog
+          visible={!!notice}
+          title={notice?.title || ""}
+          message={notice?.message || ""}
+          confirmLabel="OK"
+          hideCancel
+          onConfirm={() => setNotice(null)}
+          onCancel={() => setNotice(null)}
+        />
+
+        <ConfirmDialog
+          visible={bioOfferOpen}
+          title="Enable biometrics?"
+          message="Also unlock with biometrics? You can change this later in Settings."
+          confirmLabel="Use biometrics"
+          cancelLabel="PIN only"
+          onConfirm={() => void finishEnableLock(true)}
+          onCancel={() => void finishEnableLock(false)}
+        />
+
+        <ConfirmDialog
+          visible={notifPermOpen}
+          title="Reminders need permission"
+          message={notifPermMessage}
+          confirmLabel="Open Settings"
+          cancelLabel="Not now"
+          onConfirm={() => {
+            setNotifPermOpen(false);
+            void Linking.openSettings();
+          }}
+          onCancel={() => setNotifPermOpen(false)}
         />
 
         <ConfirmDialog
@@ -469,29 +614,91 @@ export default function SettingsScreen() {
         />
 
         <ConfirmDialog
+          visible={exportOpen}
+          title="Export your data?"
+          message="Enter your account password to download journals, moods, and insights as JSON."
+          confirmLabel="Export"
+          cancelLabel="Cancel"
+          loading={exporting}
+          onConfirm={onExportConfirm}
+          onCancel={() => {
+            if (!exporting) {
+              setExportOpen(false);
+              setStepUpPassword("");
+            }
+          }}
+        >
+          <TextInput
+            value={stepUpPassword}
+            onChangeText={setStepUpPassword}
+            secureTextEntry
+            placeholder="Password"
+            placeholderTextColor={colors.muted}
+            autoCapitalize="none"
+            style={{
+              marginTop: 12,
+              marginBottom: 4,
+              borderWidth: 1,
+              borderColor: colors.glassBorder,
+              borderRadius: 12,
+              paddingHorizontal: 14,
+              paddingVertical: 12,
+              color: colors.ink,
+              fontFamily: "DMSans_400Regular",
+            }}
+          />
+        </ConfirmDialog>
+
+        <ConfirmDialog
           visible={deleteStep === "warn"}
           title="Delete account?"
           message="This permanently removes your journals, moods, insights, and login. This cannot be undone."
-          confirmLabel="Delete forever"
+          confirmLabel="Continue"
           cancelLabel="Cancel"
           destructive
           onConfirm={() => setDeleteStep("confirm")}
-          onCancel={() => setDeleteStep(null)}
+          onCancel={() => {
+            setDeleteStep(null);
+            setStepUpPassword("");
+          }}
         />
 
         <ConfirmDialog
           visible={deleteStep === "confirm"}
-          title="Confirm delete"
-          message="Are you sure? Your data will be erased."
+          title="Confirm with password"
+          message="Enter your password to permanently erase your account."
           confirmLabel="Yes, delete"
           cancelLabel="Cancel"
           destructive
           loading={deleting}
           onConfirm={confirmDeleteAccount}
           onCancel={() => {
-            if (!deleting) setDeleteStep(null);
+            if (!deleting) {
+              setDeleteStep(null);
+              setStepUpPassword("");
+            }
           }}
-        />
+        >
+          <TextInput
+            value={stepUpPassword}
+            onChangeText={setStepUpPassword}
+            secureTextEntry
+            placeholder="Password"
+            placeholderTextColor={colors.muted}
+            autoCapitalize="none"
+            style={{
+              marginTop: 12,
+              marginBottom: 4,
+              borderWidth: 1,
+              borderColor: colors.glassBorder,
+              borderRadius: 12,
+              paddingHorizontal: 14,
+              paddingVertical: 12,
+              color: colors.ink,
+              fontFamily: "DMSans_400Regular",
+            }}
+          />
+        </ConfirmDialog>
       </View>
     </Screen>
   );

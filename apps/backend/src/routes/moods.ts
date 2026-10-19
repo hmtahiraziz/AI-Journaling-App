@@ -25,13 +25,14 @@ router.post(
   "/",
   asyncHandler(async (req: AuthRequest, res) => {
     const data = createMoodSchema.parse(req.body);
+    // loggedAt is always server-side to prevent streak / chart manipulation.
     const mood = await prisma.moodEntry.create({
       data: {
         userId: req.user!.userId,
         score: data.score,
         label: data.label || MOOD_LABELS[data.score] || "Okay",
         note: data.note ?? null,
-        loggedAt: data.loggedAt ? new Date(data.loggedAt) : new Date(),
+        loggedAt: new Date(),
       },
     });
     res.status(201).json({ mood });
@@ -50,6 +51,7 @@ router.get(
         loggedAt: { gte: since },
       },
       orderBy: { loggedAt: "asc" },
+      take: 500,
     });
 
     const average =

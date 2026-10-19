@@ -1,8 +1,7 @@
 import "../global.css";
 import "react-native-gesture-handler";
 import { useEffect } from "react";
-// TEMP: App Lock disabled — restore with useLockStore + AppState listener below
-// import { AppState } from "react-native";
+import { AppState } from "react-native";
 import * as Linking from "expo-linking";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -21,7 +20,7 @@ import {
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useAuthStore } from "@/src/store/auth";
-// import { useLockStore } from "@/src/store/lock";
+import { useLockStore } from "@/src/store/lock";
 import { useOnboardingStore } from "@/src/store/onboarding";
 import { useAvatarStore } from "@/src/store/avatar";
 import { useReminderStore } from "@/src/store/reminders";
@@ -56,8 +55,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const segments = useSegments();
   const { user, hydrated, hydrate } = useAuthStore();
-  // TEMP: App Lock disabled
-  // const { enabled, locked, hydrated: lockHydrated, hydrate: hydrateLock, lock } = useLockStore();
+  const { enabled, locked, hydrated: lockHydrated, hydrate: hydrateLock, lock } = useLockStore();
   const {
     completed: onboardingDone,
     hydrated: onboardingHydrated,
@@ -69,25 +67,24 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     hydrate();
-    // hydrateLock();
+    hydrateLock();
     hydrateOnboarding();
     hydrateReminders();
-  }, [hydrate, hydrateOnboarding, hydrateReminders]);
+  }, [hydrate, hydrateLock, hydrateOnboarding, hydrateReminders]);
 
   useEffect(() => {
     hydrateAvatar(user?.id);
     void hydrateNotifications(user?.id);
   }, [user?.id, hydrateAvatar, hydrateNotifications]);
 
-  // TEMP: App Lock disabled — background/inactive → lock()
-  // useEffect(() => {
-  //   const sub = AppState.addEventListener("change", (state) => {
-  //     if (state === "background" || state === "inactive") {
-  //       lock();
-  //     }
-  //   });
-  //   return () => sub.remove();
-  // }, [lock]);
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "background" || state === "inactive") {
+        lock();
+      }
+    });
+    return () => sub.remove();
+  }, [lock]);
 
   // Password-reset deep links (journaliq://reset-password?token=…)
   useEffect(() => {
@@ -102,13 +99,13 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   }, [router]);
 
   useEffect(() => {
-    if (!hydrated || !onboardingHydrated) return;
+    if (!hydrated || !onboardingHydrated || !lockHydrated) return;
 
     const root = segments[0];
     const inAuth = root === "(auth)";
     const inOnboarding = root === "(onboarding)";
     const inLegal = root === "(legal)";
-    // const inLock = root === "lock";
+    const inLock = root === "lock";
     const authScreen = segments[1];
     const onResetPassword = inAuth && authScreen === "reset-password";
 
@@ -118,19 +115,19 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (onboardingDone && !user && !inAuth && !inOnboarding && !inLegal) {
+    if (onboardingDone && !user && !inAuth && !inOnboarding && !inLegal && !inLock) {
       router.replace("/(auth)/signin");
       return;
     }
 
-    // TEMP: App Lock disabled — redirect to /lock when locked
-    // if (user && enabled && locked && !inLock && !inLegal && !onResetPassword) {
-    //   router.replace("/lock");
-    //   return;
-    // }
+    // App lock blocks the rest of the app (deep links / restore cannot bypass).
+    if (user && enabled && locked && !inLock && !inLegal && !onResetPassword) {
+      router.replace("/lock");
+      return;
+    }
 
     // Don't kick users off the reset-password screen if a stale session exists.
-    if (user && (inAuth || inOnboarding) && !inLegal && !onResetPassword) {
+    if (user && (inAuth || inOnboarding) && !inLegal && !onResetPassword && !(enabled && locked)) {
       router.replace("/(app)/(tabs)/home");
     }
   }, [
@@ -138,9 +135,9 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     hydrated,
     onboardingHydrated,
     onboardingDone,
-    // enabled,
-    // locked,
-    // lockHydrated,
+    enabled,
+    locked,
+    lockHydrated,
     segments,
     router,
   ]);
@@ -179,8 +176,7 @@ function RootLayout() {
               <Stack.Screen name="(auth)" />
               <Stack.Screen name="(app)" />
               <Stack.Screen name="(legal)" />
-              {/* TEMP: App Lock disabled */}
-              {/* <Stack.Screen name="lock" options={{ animation: "fade" }} /> */}
+              <Stack.Screen name="lock" options={{ animation: "fade", gestureEnabled: false }} />
             </Stack>
             <ToastHost />
           </AuthGate>

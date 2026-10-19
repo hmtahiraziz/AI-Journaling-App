@@ -4,6 +4,7 @@
  * EXPO_PUBLIC_PRIVACY_URL / EXPO_PUBLIC_TERMS_URL to those public URLs.
  */
 
+/** Display date. Consent version stored on the server is `2026-07-17` (LEGAL_CONSENT_VERSION). */
 export const LEGAL_UPDATED = "July 17, 2026";
 
 export const PRIVACY_POLICY = {
@@ -56,7 +57,11 @@ export const PRIVACY_POLICY = {
     },
     {
       heading: "Contact",
-      body: "For privacy questions or requests, contact us at the support email listed on our Google Play Store listing (or the email you used when registering the developer account).",
+      body: "For privacy questions or requests, contact us at support@journaliq.app. You can also reach us from Settings → Contact support in the app.",
+    },
+    {
+      heading: "Account deletion (web)",
+      body: "You can delete your account in the app under Settings. If a public deletion webpage is published for store compliance, its URL will be listed on our Google Play Data safety form and (when configured) under Settings → Delete account online.",
     },
   ],
 } as const;
@@ -115,7 +120,7 @@ export const TERMS_OF_SERVICE = {
     },
     {
       heading: "Contact",
-      body: "Questions about these Terms can be sent to the support email on our Google Play Store listing.",
+      body: "Questions about these Terms can be sent to support@journaliq.app.",
     },
   ],
 } as const;

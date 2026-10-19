@@ -10,6 +10,8 @@ import { getWeeklyInsight, listMoods } from "@/src/api/journals.api";
 import { buildThisWeekMoodProgress } from "@/src/constants/moods";
 import { colors } from "@/src/theme/colors";
 import { MEDICAL_DISCLAIMER } from "@/src/constants/disclaimer";
+import { AI_DISCLOSURE_INSIGHT } from "@/src/constants/support";
+import { ReportAiButton } from "@/src/components/ReportAiButton";
 import { tabBarClearance } from "@/src/constants/tabBar";
 
 function ChipRow({ items }: { items: { label: string; count: number }[] }) {
@@ -127,6 +129,12 @@ export default function InsightsScreen() {
               >
                 {insight.data?.insight.content}
               </Text>
+              <Text className="font-sans text-xs mt-3" style={{ color: colors.muted, lineHeight: 17 }}>
+                {AI_DISCLOSURE_INSIGHT}
+              </Text>
+              {insight.data?.insight.id ? (
+                <ReportAiButton kind="weekly_insight" insightId={insight.data.insight.id} />
+              ) : null}
             </GlassCard>
           </>
         )}

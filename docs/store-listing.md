@@ -29,4 +29,18 @@ Keep hero art calm and personal (journal / quiet moment). Avoid clinical or medi
 
 ## Privacy Policy / Terms URLs
 
-Host `docs/legal/privacy.html` and `docs/legal/terms.html`, then paste the public HTTPS URLs into Play Console.
+Host `docs/legal/privacy.html` and `docs/legal/terms.html` on a public HTTPS origin, then paste those URLs into Play Console and set:
+
+```
+EXPO_PUBLIC_PRIVACY_URL=https://your-domain.com/privacy
+EXPO_PUBLIC_TERMS_URL=https://your-domain.com/terms
+EXPO_PUBLIC_ACCOUNT_DELETION_URL=https://your-domain.com/delete-account
+```
+
+Also set production API in EAS (`eas.json` → production.env or EAS secrets):
+
+```
+EXPO_PUBLIC_API_URL=https://your-api.example.com
+```
+
+Support email used in-app: `support@journaliq.app` (update `src/constants/support.ts` if you change it).

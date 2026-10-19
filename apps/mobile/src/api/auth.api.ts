@@ -1,4 +1,8 @@
-import { api, clearTokens, setTokens } from "./client";
+import * as SecureStore from "expo-secure-store";
+import { api, clearTokens, setTokens, TOKEN_KEYS } from "./client";
+
+/** Keep in sync with packages/shared LEGAL_CONSENT_VERSION. */
+export const LEGAL_CONSENT_VERSION = "2026-07-17";
 
 export type AuthUser = {
   id: string;
@@ -6,6 +10,8 @@ export type AuthUser = {
   name: string;
   timezone?: string;
   createdAt?: string;
+  consentLegalVersion?: string | null;
+  consentLegalAt?: string | null;
 };
 
 export type AuthResponse = {
@@ -14,8 +20,16 @@ export type AuthResponse = {
   refreshToken: string;
 };
 
-export async function signup(input: { name: string; email: string; password: string }) {
-  const { data } = await api.post<AuthResponse>("/auth/signup", input);
+export async function signup(input: {
+  name: string;
+  email: string;
+  password: string;
+  acceptedLegalVersion?: string;
+}) {
+  const { data } = await api.post<AuthResponse>("/auth/signup", {
+    ...input,
+    acceptedLegalVersion: input.acceptedLegalVersion ?? LEGAL_CONSENT_VERSION,
+  });
   await setTokens(data.accessToken, data.refreshToken);
   return data;
 }
@@ -28,7 +42,8 @@ export async function signin(input: { email: string; password: string }) {
 
 export async function signout() {
   try {
-    await api.post("/auth/signout", {});
+    const refreshToken = await SecureStore.getItemAsync(TOKEN_KEYS.refresh);
+    await api.post("/auth/signout", refreshToken ? { refreshToken } : {});
   } finally {
     await clearTokens();
   }
@@ -74,13 +89,13 @@ export type AccountExport = {
   insights: unknown[];
 };
 
-export async function exportAccountData() {
-  const { data } = await api.get<AccountExport>("/me/export");
+export async function exportAccountData(password: string) {
+  const { data } = await api.post<AccountExport>("/me/export", { password });
   return data;
 }
 
-export async function deleteAccount() {
-  const { data } = await api.delete<{ ok: boolean }>("/me");
+export async function deleteAccount(password: string) {
+  const { data } = await api.delete<{ ok: boolean }>("/me", { data: { password } });
   await clearTokens();
   return data;
 }

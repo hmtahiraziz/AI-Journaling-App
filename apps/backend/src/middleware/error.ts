@@ -32,6 +32,8 @@ export function errorHandler(
       details: err.flatten(),
     });
   }
-  console.error(err);
+  const message = err instanceof Error ? err.message : "unknown";
+  // Never send stacks, Prisma details, or provider errors to the client.
+  console.error("[Journal IQ] Unhandled error:", message);
   return res.status(500).json({ error: "Internal server error" });
 }
