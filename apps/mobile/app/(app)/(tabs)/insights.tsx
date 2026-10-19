@@ -1,51 +1,16 @@
+import { useMemo } from "react";
 import { Text, View, ActivityIndicator, useWindowDimensions, Pressable } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Screen } from "@/src/components/Screen";
 import { GlassCard } from "@/src/components/GlassCard";
 import { AppHeader } from "@/src/components/AppHeader";
-import { getWeeklyInsight, type WeeklyInsightSummary } from "@/src/api/journals.api";
+import { WeeklyMoodInsight } from "@/src/components/WeeklyMoodInsight";
+import { getWeeklyInsight, listMoods } from "@/src/api/journals.api";
+import { buildThisWeekMoodProgress } from "@/src/constants/moods";
 import { colors } from "@/src/theme/colors";
 import { MEDICAL_DISCLAIMER } from "@/src/constants/disclaimer";
 import { tabBarClearance } from "@/src/constants/tabBar";
-
-function StatTile({
-  label,
-  value,
-  compact,
-}: {
-  label: string;
-  value: string;
-  compact?: boolean;
-}) {
-  return (
-    <View
-      className="flex-1 rounded-2xl px-3 py-3"
-      style={{
-        backgroundColor: colors.glassStrong,
-        borderWidth: 1,
-        borderColor: colors.glassBorder,
-        minHeight: compact ? 68 : 76,
-        justifyContent: "center",
-      }}
-    >
-      <Text
-        className="font-sansMedium text-[10px] tracking-widest uppercase mb-1"
-        style={{ color: colors.muted }}
-        numberOfLines={1}
-      >
-        {label}
-      </Text>
-      <Text
-        className={compact ? "font-display text-xl" : "font-display text-2xl"}
-        style={{ color: colors.ink }}
-        numberOfLines={1}
-      >
-        {value}
-      </Text>
-    </View>
-  );
-}
 
 function ChipRow({ items }: { items: { label: string; count: number }[] }) {
   if (!items.length) return null;
@@ -71,43 +36,14 @@ function ChipRow({ items }: { items: { label: string; count: number }[] }) {
   );
 }
 
-function SummaryBlock({ summary, compact }: { summary: WeeklyInsightSummary; compact: boolean }) {
-  const moodValue =
-    summary.moodAverage != null ? `${summary.moodAverage.toFixed(1)}` : "—";
-  const journalValue = `${summary.journalDays}/${7}`;
-
+function SectionLabel({ children }: { children: string }) {
   return (
-    <View className="mb-5">
-      <View className="flex-row mb-3" style={{ gap: compact ? 8 : 10 }}>
-        <StatTile label="Avg mood" value={moodValue} compact={compact} />
-        <StatTile label="Check-ins" value={String(summary.moodCount)} compact={compact} />
-        <StatTile label="Wrote" value={journalValue} compact={compact} />
-      </View>
-
-      {summary.themes.length > 0 ? (
-        <GlassCard className="mb-3">
-          <Text
-            className="font-sansMedium text-xs tracking-widest uppercase mb-3"
-            style={{ color: colors.secondary }}
-          >
-            Themes this week
-          </Text>
-          <ChipRow items={summary.themes.map((t) => ({ label: t.label, count: t.count }))} />
-        </GlassCard>
-      ) : null}
-
-      {summary.topMoods.length > 0 ? (
-        <GlassCard>
-          <Text
-            className="font-sansMedium text-xs tracking-widest uppercase mb-3"
-            style={{ color: colors.secondary }}
-          >
-            Moods you named
-          </Text>
-          <ChipRow items={summary.topMoods} />
-        </GlassCard>
-      ) : null}
-    </View>
+    <Text
+      className="font-sansMedium text-xs tracking-widest uppercase mb-3"
+      style={{ color: colors.secondary }}
+    >
+      {children}
+    </Text>
   );
 }
 
@@ -115,7 +51,16 @@ export default function InsightsScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const compact = width < 360;
+
   const insight = useQuery({ queryKey: ["weekly-insight"], queryFn: getWeeklyInsight });
+  const moods = useQuery({ queryKey: ["moods"], queryFn: listMoods });
+
+  const week = useMemo(
+    () => buildThisWeekMoodProgress(moods.data ?? []),
+    [moods.data]
+  );
+
+  const loading = insight.isLoading || moods.isLoading;
 
   return (
     <Screen>
@@ -125,7 +70,7 @@ export default function InsightsScreen() {
           {MEDICAL_DISCLAIMER}
         </Text>
 
-        {insight.isLoading ? (
+        {loading ? (
           <ActivityIndicator color={colors.primary} />
         ) : insight.isError ? (
           <GlassCard>
@@ -144,18 +89,40 @@ export default function InsightsScreen() {
         ) : (
           <>
             {insight.data?.summary ? (
-              <SummaryBlock summary={insight.data.summary} compact={compact} />
+              <WeeklyMoodInsight
+                summary={insight.data.summary}
+                week={week}
+                compact={compact}
+              />
+            ) : null}
+
+            {insight.data?.summary?.themes.length ? (
+              <GlassCard className="mb-3">
+                <SectionLabel>Themes this week</SectionLabel>
+                <ChipRow
+                  items={insight.data.summary.themes.map((t) => ({
+                    label: t.label,
+                    count: t.count,
+                  }))}
+                />
+              </GlassCard>
+            ) : null}
+
+            {insight.data?.summary?.topMoods.length ? (
+              <GlassCard className="mb-5">
+                <SectionLabel>Moods you named</SectionLabel>
+                <ChipRow items={insight.data.summary.topMoods} />
+              </GlassCard>
             ) : null}
 
             <GlassCard>
+              <SectionLabel>This week</SectionLabel>
               <Text
-                className="font-sansMedium text-xs tracking-widest uppercase mb-3"
-                style={{ color: colors.secondary }}
-              >
-                This week
-              </Text>
-              <Text
-                className={compact ? "font-displayItalic text-lg leading-7" : "font-displayItalic text-xl leading-8"}
+                className={
+                  compact
+                    ? "font-displayItalic text-lg leading-7"
+                    : "font-displayItalic text-xl leading-8"
+                }
                 style={{ color: colors.ink }}
               >
                 {insight.data?.insight.content}

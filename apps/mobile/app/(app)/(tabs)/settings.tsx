@@ -21,12 +21,12 @@ import { useNotificationsStore } from "@/src/store/notifications";
 import { getErrorMessage } from "@/src/api/client";
 import { toast } from "@/src/lib/toast";
 import { displayName, avatarName } from "@/src/utils/displayName";
-import { showAvatarPicker } from "@/src/store/avatar";
 import { colors } from "@/src/theme/colors";
 import { MEDICAL_DISCLAIMER } from "@/src/constants/disclaimer";
 import { tabBarClearance } from "@/src/constants/tabBar";
 import { ReminderTimeBlock } from "@/src/components/ReminderTimeBlock";
 import { ReminderTimeSheet } from "@/src/components/ReminderTimeSheet";
+import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 
 function SettingsRow({
   icon,
@@ -101,6 +101,9 @@ export default function SettingsScreen() {
   const [exporting, setExporting] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [timeSheetOpen, setTimeSheetOpen] = useState(false);
+  const [signOutOpen, setSignOutOpen] = useState(false);
+  /** null → warn → confirm (two-step delete) */
+  const [deleteStep, setDeleteStep] = useState<null | "warn" | "confirm">(null);
 
   useEffect(() => {
     if (!reminderHydrated) hydrateReminders();
@@ -174,66 +177,37 @@ export default function SettingsScreen() {
     }
   }
 
-  function onDeleteAccount() {
-    Alert.alert(
-      "Delete account?",
-      "This permanently removes your journals, moods, insights, and login. This cannot be undone.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete forever",
-          style: "destructive",
-          onPress: () => {
-            Alert.alert("Confirm delete", "Are you sure? Your data will be erased.", [
-              { text: "Cancel", style: "cancel" },
-              {
-                text: "Yes, delete",
-                style: "destructive",
-                onPress: async () => {
-                  setDeleting(true);
-                  try {
-                    await deleteAccount();
-                    clearAvatar();
-                    clearNotifications();
-                    await logoutLocal();
-                    toast.success("Account deleted");
-                    router.replace("/(auth)/signin");
-                  } catch (e) {
-                    toast.error(getErrorMessage(e, "Couldn’t delete account"));
-                  } finally {
-                    setDeleting(false);
-                  }
-                },
-              },
-            ]);
-          },
-        },
-      ]
-    );
+  async function confirmDeleteAccount() {
+    setDeleting(true);
+    try {
+      await deleteAccount();
+      clearAvatar();
+      clearNotifications();
+      await logoutLocal();
+      setDeleteStep(null);
+      toast.success("Account deleted");
+      router.replace("/(auth)/signin");
+    } catch (e) {
+      toast.error(getErrorMessage(e, "Couldn’t delete account"));
+    } finally {
+      setDeleting(false);
+    }
   }
 
-  function onSignOut() {
-    Alert.alert("Sign out?", "You’ll need your password to sign back in.", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Sign out",
-        style: "destructive",
-        onPress: async () => {
-          setLoading(true);
-          try {
-            await signout();
-          } catch (e) {
-            console.warn(getErrorMessage(e));
-          } finally {
-            clearAvatar();
-            clearNotifications();
-            await logoutLocal();
-            setLoading(false);
-            router.replace("/(auth)/signin");
-          }
-        },
-      },
-    ]);
+  async function confirmSignOut() {
+    setLoading(true);
+    try {
+      await signout();
+    } catch (e) {
+      console.warn(getErrorMessage(e));
+    } finally {
+      clearAvatar();
+      clearNotifications();
+      await logoutLocal();
+      setLoading(false);
+      setSignOutOpen(false);
+      router.replace("/(auth)/signin");
+    }
   }
 
   return (
@@ -245,40 +219,13 @@ export default function SettingsScreen() {
         </Text>
 
         <GlassCard className="mb-4">
-          <View className="flex-row items-center">
-            <Pressable
-              onPress={() => {
-                if (!user?.id) return;
-                showAvatarPicker(user.id);
-              }}
-              accessibilityLabel="Edit profile photo"
-              hitSlop={4}
-            >
-              <View>
-                <AvatarInitials name={avatarName(user?.name)} size={72} ring />
-                <View
-                  style={{
-                    position: "absolute",
-                    right: -1,
-                    bottom: -1,
-                    width: 26,
-                    height: 26,
-                    borderRadius: 13,
-                    backgroundColor: colors.primary,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    borderWidth: 2,
-                    borderColor: colors.night,
-                  }}
-                >
-                  <Ionicons name="camera" size={13} color={colors.night} />
-                </View>
-              </View>
-            </Pressable>
-            <Pressable
-              onPress={() => router.push("/(app)/profile")}
-              className="flex-1 ml-4 min-h-[72px] justify-center"
-            >
+          <Pressable
+            onPress={() => router.push("/(app)/profile")}
+            className="flex-row items-center"
+            accessibilityLabel="View profile"
+          >
+            <AvatarInitials name={avatarName(user?.name)} size={72} ring />
+            <View className="flex-1 ml-4 min-h-[72px] justify-center">
               <Text className="font-sansMedium text-lg" style={{ color: colors.ink }}>
                 {displayName(user?.name, "Your profile")}
               </Text>
@@ -288,8 +235,9 @@ export default function SettingsScreen() {
               <Text className="font-sansMedium text-sm mt-2" style={{ color: colors.secondary }}>
                 View profile ›
               </Text>
-            </Pressable>
-          </View>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+          </Pressable>
         </GlassCard>
 
         <GlassCard className="mb-4">
@@ -299,13 +247,6 @@ export default function SettingsScreen() {
           >
             Account
           </Text>
-          <SettingsRow
-            icon="person-outline"
-            label="Edit profile"
-            value="Name & timezone"
-            onPress={() => router.push("/(app)/profile")}
-          />
-          <View style={{ height: 1, backgroundColor: colors.glassBorder }} />
           <SettingsRow
             icon="happy-outline"
             label="Mood check-ins"
@@ -453,7 +394,7 @@ export default function SettingsScreen() {
           />
           <View style={{ height: 1, backgroundColor: colors.glassBorder }} />
           <Pressable
-            onPress={onDeleteAccount}
+            onPress={() => setDeleteStep("warn")}
             disabled={deleting}
             className="min-h-[52px] flex-row items-center py-3.5"
           >
@@ -506,7 +447,51 @@ export default function SettingsScreen() {
           />
         </GlassCard>
 
-        <Button title="Sign out" onPress={onSignOut} loading={loading} variant="secondary" />
+        <Button
+          title="Sign out"
+          onPress={() => setSignOutOpen(true)}
+          loading={loading}
+          variant="secondary"
+        />
+
+        <ConfirmDialog
+          visible={signOutOpen}
+          title="Sign out?"
+          message="You’ll need your password to sign back in."
+          confirmLabel="Sign out"
+          cancelLabel="Cancel"
+          destructive
+          loading={loading}
+          onConfirm={confirmSignOut}
+          onCancel={() => {
+            if (!loading) setSignOutOpen(false);
+          }}
+        />
+
+        <ConfirmDialog
+          visible={deleteStep === "warn"}
+          title="Delete account?"
+          message="This permanently removes your journals, moods, insights, and login. This cannot be undone."
+          confirmLabel="Delete forever"
+          cancelLabel="Cancel"
+          destructive
+          onConfirm={() => setDeleteStep("confirm")}
+          onCancel={() => setDeleteStep(null)}
+        />
+
+        <ConfirmDialog
+          visible={deleteStep === "confirm"}
+          title="Confirm delete"
+          message="Are you sure? Your data will be erased."
+          confirmLabel="Yes, delete"
+          cancelLabel="Cancel"
+          destructive
+          loading={deleting}
+          onConfirm={confirmDeleteAccount}
+          onCancel={() => {
+            if (!deleting) setDeleteStep(null);
+          }}
+        />
       </View>
     </Screen>
   );

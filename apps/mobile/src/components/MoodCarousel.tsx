@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Platform, Pressable, Text, View } from "react-native";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { GlassCard } from "@/src/components/GlassCard";
@@ -11,8 +11,8 @@ import { toast } from "@/src/lib/toast";
 import { colors } from "@/src/theme/colors";
 import { type } from "@/src/theme/typography";
 
-/** Fixed block so emoji/label swaps never shift layout. */
-const MOOD_STAGE_HEIGHT = 140;
+/** Fixed block so emoji/label swaps never shift layout or bleed past the card. */
+const MOOD_STAGE_HEIGHT = 128;
 
 type Props = {
   title?: string;
@@ -29,6 +29,7 @@ export function MoodCarousel({ title = "How are you feeling now?" }: Props) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["mood-stats"] });
       qc.invalidateQueries({ queryKey: ["moods"] });
+      qc.invalidateQueries({ queryKey: ["weekly-insight"] });
       toast.success("Mood saved privately");
     },
     onError: (e) => toast.error(getErrorMessage(e, "Couldn’t save mood")),
@@ -50,19 +51,22 @@ export function MoodCarousel({ title = "How are you feeling now?" }: Props) {
         {title}
       </Text>
 
-      <View className="flex-row items-center justify-between px-1">
+      <View
+        className="flex-row items-center justify-between"
+        style={{ overflow: "hidden", maxHeight: MOOD_STAGE_HEIGHT }}
+      >
         <Pressable
           onPress={prev}
-          hitSlop={16}
+          hitSlop={12}
           accessibilityLabel="Previous mood"
           style={{
-            width: 48,
-            height: 48,
+            width: 44,
+            height: 44,
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          <Ionicons name="chevron-back" size={28} color={colors.ink} />
+          <Ionicons name="chevron-back" size={26} color={colors.ink} />
         </Pressable>
 
         <View
@@ -71,18 +75,40 @@ export function MoodCarousel({ title = "How are you feeling now?" }: Props) {
             height: MOOD_STAGE_HEIGHT,
             alignItems: "center",
             justifyContent: "center",
+            overflow: "hidden",
           }}
         >
-          <Text style={{ fontSize: type.moodEmoji.fontSize, lineHeight: type.moodEmoji.lineHeight }}>
-            {mood.emoji}
-          </Text>
+          <View
+            style={{
+              height: type.moodEmoji.lineHeight,
+              width: "100%",
+              alignItems: "center",
+              justifyContent: "center",
+              overflow: "hidden",
+            }}
+          >
+            <Text
+              numberOfLines={1}
+              allowFontScaling={false}
+              style={{
+                fontSize: type.moodEmoji.fontSize,
+                lineHeight: type.moodEmoji.lineHeight,
+                textAlign: "center",
+                ...(Platform.OS === "android" ? { includeFontPadding: false } : null),
+              }}
+            >
+              {mood.emoji}
+            </Text>
+          </View>
           <Text
             className="font-display"
+            numberOfLines={1}
             style={{
               color: colors.ink,
               fontSize: type.moodLabel.fontSize,
               lineHeight: type.moodLabel.lineHeight,
               marginTop: 2,
+              textAlign: "center",
             }}
           >
             {mood.label}
@@ -91,16 +117,16 @@ export function MoodCarousel({ title = "How are you feeling now?" }: Props) {
 
         <Pressable
           onPress={next}
-          hitSlop={16}
+          hitSlop={12}
           accessibilityLabel="Next mood"
           style={{
-            width: 48,
-            height: 48,
+            width: 44,
+            height: 44,
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          <Ionicons name="chevron-forward" size={28} color={colors.ink} />
+          <Ionicons name="chevron-forward" size={26} color={colors.ink} />
         </Pressable>
       </View>
 

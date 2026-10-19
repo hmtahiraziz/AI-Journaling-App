@@ -66,10 +66,13 @@ export const TAB_FLOAT_GAP = 12;
 export const TAB_SAFE_BOTTOM_FLOOR = 8;
 
 /**
- * Optical nudge downward so icons sit mid-dock.
- * React Navigation’s icon slot sits slightly high even with labels hidden.
+ * Optical nudge so icons sit mid-dock (RN tab icon slot sits slightly high).
+ * Kept small — no active-dot offset below icons.
  */
-export const TAB_CONTENT_NUDGE_Y = 6;
+export const TAB_CONTENT_NUDGE_Y = 2;
+
+/** Extra inset inside the dock so side icons clear the rounded ends. */
+export const TAB_ICON_EDGE_PAD = 10;
 
 /** Extra gap below last scroll content above the dock. */
 export const TAB_CONTENT_GAP = 20;

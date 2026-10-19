@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Text, View, ActivityIndicator } from "react-native";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Text, View } from "react-native";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Screen } from "@/src/components/Screen";
 import { MoodPicker } from "@/src/components/MoodPicker";
@@ -9,7 +9,7 @@ import { Field } from "@/src/components/Field";
 import { Button } from "@/src/components/Button";
 import { GlassCard } from "@/src/components/GlassCard";
 import { AppHeader } from "@/src/components/AppHeader";
-import { createMood, getMoodStats } from "@/src/api/journals.api";
+import { createMood } from "@/src/api/journals.api";
 import { getErrorMessage } from "@/src/api/client";
 import { toast } from "@/src/lib/toast";
 import { colors } from "@/src/theme/colors";
@@ -22,8 +22,6 @@ export default function MoodScreen() {
   const [label, setLabel] = useState("");
   const [note, setNote] = useState("");
 
-  const stats = useQuery({ queryKey: ["mood-stats"], queryFn: getMoodStats });
-
   const save = useMutation({
     mutationFn: () => createMood({ score: score!, label, note: note || undefined }),
     onSuccess: () => {
@@ -31,6 +29,7 @@ export default function MoodScreen() {
       setScore(null);
       qc.invalidateQueries({ queryKey: ["mood-stats"] });
       qc.invalidateQueries({ queryKey: ["moods"] });
+      qc.invalidateQueries({ queryKey: ["weekly-insight"] });
       toast.success("Mood check-in saved");
     },
     onError: (e) => toast.error(getErrorMessage(e, "Couldn’t save mood")),
@@ -76,51 +75,9 @@ export default function MoodScreen() {
           />
         </GlassCard>
 
-        <Text className="font-sansBold text-lg mb-3" style={{ color: colors.ink }}>
-          This week
+        <Text className="font-sans text-sm text-center" style={{ color: colors.muted }}>
+          Weekly mood trends live in AI Insights.
         </Text>
-        {stats.isLoading ? (
-          <ActivityIndicator color={colors.primary} />
-        ) : (
-          <GlassCard>
-            <View className="flex-row items-end justify-between mb-4">
-              <View>
-                <Text className="font-sans text-sm" style={{ color: colors.muted }}>
-                  Average mood
-                </Text>
-                <Text className="font-display text-4xl mt-1" style={{ color: colors.primary }}>
-                  {stats.data?.average != null ? stats.data.average.toFixed(1) : "—"}
-                </Text>
-              </View>
-              <Text className="font-sans text-sm" style={{ color: colors.muted }}>
-                {stats.data?.count || 0} check-ins
-              </Text>
-            </View>
-
-            <View className="flex-row items-end gap-2 h-28">
-              {(stats.data?.daily || []).map((d) => (
-                <View key={d.date} className="flex-1 items-center justify-end">
-                  <View
-                    className="w-full rounded-t-xl"
-                    style={{
-                      height: Math.max(8, (d.average / 5) * 96),
-                      backgroundColor: colors.secondary,
-                      opacity: 0.85,
-                    }}
-                  />
-                  <Text className="text-[9px] mt-1" style={{ color: colors.muted }}>
-                    {d.date.slice(5)}
-                  </Text>
-                </View>
-              ))}
-              {!stats.data?.daily?.length ? (
-                <Text className="font-sans flex-1 text-center" style={{ color: colors.muted }}>
-                  Log a few moods to see your week.
-                </Text>
-              ) : null}
-            </View>
-          </GlassCard>
-        )}
       </View>
     </Screen>
   );

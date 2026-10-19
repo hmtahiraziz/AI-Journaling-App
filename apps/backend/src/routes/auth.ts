@@ -163,6 +163,20 @@ router.post(
       // Do not leak delivery failures to the client (enumeration / probing).
     }
 
+    // Local-only DX: expose a fixed OTP + reset token so the mobile app can
+    // skip the magic-link inbox. Never included outside development.
+    if (env.NODE_ENV === "development") {
+      const LOCAL_OTP = "123456";
+      console.log(
+        `[Journal IQ] Local reset OTP for ${user.email}: ${LOCAL_OTP} (dev only)`
+      );
+      res.json({
+        ok: true,
+        localReset: { otp: LOCAL_OTP, token },
+      });
+      return;
+    }
+
     res.json({ ok: true });
   })
 );

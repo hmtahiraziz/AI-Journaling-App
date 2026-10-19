@@ -34,8 +34,14 @@ export async function signout() {
   }
 }
 
+export type ForgotPasswordResponse = {
+  ok: boolean;
+  /** Present only when the backend is running in NODE_ENV=development. */
+  localReset?: { otp: string; token: string };
+};
+
 export async function forgotPassword(email: string) {
-  const { data } = await api.post("/auth/forgot-password", { email });
+  const { data } = await api.post<ForgotPasswordResponse>("/auth/forgot-password", { email });
   return data;
 }
 

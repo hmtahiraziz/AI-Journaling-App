@@ -40,6 +40,7 @@ export function Button({ title, onPress, variant = "primary", loading, disabled 
       style={[
         anim,
         {
+          width: "100%",
           backgroundColor: bg,
           borderColor: variant === "secondary" ? colors.glassBorder : "transparent",
           minHeight: 52,

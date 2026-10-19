@@ -1,7 +1,7 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 import * as SecureStore from "expo-secure-store";
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:4000";
+const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:4000" || process.env.PRODUCTION_BACKEND_URL;
 
 export const TOKEN_KEYS = {
   access: "jiq_access_token",
