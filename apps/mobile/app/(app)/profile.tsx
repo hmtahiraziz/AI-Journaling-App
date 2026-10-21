@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Text, View, Pressable } from "react-native";
+import { Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Screen } from "@/src/components/Screen";
 import { Field } from "@/src/components/Field";
@@ -11,9 +11,8 @@ import { getErrorMessage } from "@/src/api/client";
 import { toast } from "@/src/lib/toast";
 import { useAuthStore } from "@/src/store/auth";
 import { displayName, avatarName, looksLikeEmail } from "@/src/utils/displayName";
-import { showAvatarPicker } from "@/src/store/avatar";
+import { AvatarPhotoActions } from "@/src/components/AvatarPhotoActions";
 import { colors } from "@/src/theme/colors";
-import { Ionicons } from "@expo/vector-icons";
 
 function formatMemberSince(value?: string) {
   if (!value) return null;
@@ -89,12 +88,6 @@ export default function ProfileScreen() {
 
   return (
     <Screen ambient="subtle">
-      <Pressable onPress={() => router.back()} className="mb-3 min-h-[44px] justify-center">
-        <Text className="font-sansMedium" style={{ color: colors.secondary }}>
-          ← Back
-        </Text>
-      </Pressable>
-
       <Text className="font-display text-3xl mb-1" style={{ color: colors.ink }}>
         Profile
       </Text>
@@ -102,52 +95,25 @@ export default function ProfileScreen() {
         Your account details
       </Text>
 
-      <GlassCard className="mb-5 items-center" style={{ paddingVertical: 28 }}>
-        <Pressable
-          onPress={() => {
-            if (!user?.id) return;
-            showAvatarPicker(user.id);
-          }}
-          accessibilityLabel="Edit profile photo"
-        >
-          <View>
-            <AvatarInitials name={avatarName(name || user?.name)} size={104} ring />
-            <View
-              style={{
-                position: "absolute",
-                right: 2,
-                bottom: 2,
-                width: 32,
-                height: 32,
-                borderRadius: 16,
-                backgroundColor: colors.primary,
-                alignItems: "center",
-                justifyContent: "center",
-                borderWidth: 3,
-                borderColor: colors.night,
-              }}
-            >
-              <Ionicons name="camera" size={15} color={colors.night} />
-            </View>
-          </View>
-        </Pressable>
-        <Text className="font-sansMedium text-xl mt-5" style={{ color: colors.ink }}>
-          {displayName(name || user?.name, "Your name")}
-        </Text>
-        <Text className="font-sans mt-1" style={{ color: colors.muted }}>
-          {user?.email}
-        </Text>
-        {joined ? (
-          <Text className="font-sans text-sm mt-2" style={{ color: colors.muted }}>
-            Member since {joined}
+      <GlassCard flat className="mb-5" style={{ paddingVertical: 28 }}>
+        <View className="items-center">
+          <AvatarInitials name={avatarName(name || user?.name)} size={104} ring />
+          <Text
+            className="font-sansMedium text-xl mt-5 text-center"
+            style={{ color: colors.ink }}
+          >
+            {displayName(name || user?.name, "Your name")}
           </Text>
-        ) : null}
-        <Text className="font-sans text-xs mt-3" style={{ color: colors.muted }}>
-          Tap photo to update
-        </Text>
+          {joined ? (
+            <Text className="font-sans text-sm mt-2 text-center" style={{ color: colors.muted }}>
+              Member since {joined}
+            </Text>
+          ) : null}
+        </View>
+        {user?.id ? <AvatarPhotoActions userId={user.id} /> : null}
       </GlassCard>
 
-      <GlassCard className="mb-6">
+      <GlassCard flat className="mb-6">
         <Field
           label="Display name"
           value={name}

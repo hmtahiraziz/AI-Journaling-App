@@ -5,7 +5,7 @@ import { Screen } from "@/src/components/Screen";
 import { Field } from "@/src/components/Field";
 import { Button } from "@/src/components/Button";
 import { GlassCard } from "@/src/components/GlassCard";
-import { forgotPassword } from "@/src/api/auth.api";
+import { forgotPassword, type ForgotPasswordResponse } from "@/src/api/auth.api";
 import { getErrorMessage } from "@/src/api/client";
 import { colors } from "@/src/theme/colors";
 
@@ -19,6 +19,10 @@ export default function ForgotPasswordScreen() {
   const [error, setError] = useState("");
   const [sent, setSent] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+  /** Dev-only payload from forgot-password; never shown / used outside __DEV__. */
+  const [localReset, setLocalReset] = useState<ForgotPasswordResponse["localReset"]>();
+  const [otp, setOtp] = useState("");
+  const [otpError, setOtpError] = useState("");
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -28,6 +32,7 @@ export default function ForgotPasswordScreen() {
 
   async function onSubmit() {
     setError("");
+    setOtpError("");
     const trimmed = email.trim().toLowerCase();
     if (!EMAIL_RE.test(trimmed)) {
       setError("Enter a valid email address.");
@@ -37,9 +42,16 @@ export default function ForgotPasswordScreen() {
 
     setLoading(true);
     try {
-      await forgotPassword(trimmed);
+      const data = await forgotPassword(trimmed);
       setSent(true);
       setCooldown(RESEND_COOLDOWN_SEC);
+      setOtp("");
+      // Magic link remains source of truth outside local/dev.
+      if (__DEV__ && data.localReset?.otp && data.localReset?.token) {
+        setLocalReset(data.localReset);
+      } else {
+        setLocalReset(undefined);
+      }
     } catch (e) {
       setError(getErrorMessage(e, "Couldn’t send reset link"));
     } finally {
@@ -47,7 +59,27 @@ export default function ForgotPasswordScreen() {
     }
   }
 
+  function onVerifyOtp() {
+    setOtpError("");
+    if (!localReset) return;
+    const entered = otp.trim();
+    if (entered.length !== 6 || !/^\d{6}$/.test(entered)) {
+      setOtpError("Enter the 6-digit code.");
+      return;
+    }
+    if (entered !== localReset.otp) {
+      setOtpError("That code doesn’t match. Try again.");
+      return;
+    }
+    router.push({
+      pathname: "/(auth)/reset-password",
+      params: { token: localReset.token },
+    });
+  }
+
   if (sent) {
+    const showLocalOtp = Boolean(__DEV__ && localReset);
+
     return (
       <Screen scroll edges={["top", "left", "right", "bottom"]}>
         <View style={{ paddingBottom: 24 }}>
@@ -76,6 +108,49 @@ export default function ForgotPasswordScreen() {
             , a reset link is on the way. It expires in one hour.
           </Text>
 
+          {showLocalOtp ? (
+            <GlassCard style={{ marginBottom: 12 }}>
+              <Text
+                style={{
+                  color: colors.secondary,
+                  fontFamily: "DMSans_500Medium",
+                  fontSize: 12,
+                  letterSpacing: 0.08,
+                  textTransform: "uppercase",
+                  marginBottom: 8,
+                }}
+              >
+                Local only
+              </Text>
+              <Text
+                style={{
+                  color: colors.muted,
+                  fontFamily: "DMSans_400Regular",
+                  fontSize: 14,
+                  lineHeight: 21,
+                  marginBottom: 16,
+                }}
+              >
+                Dev shortcut: enter the 6-digit OTP (use{" "}
+                <Text style={{ color: colors.ink, fontFamily: "DMSans_500Medium" }}>123456</Text>) to
+                continue without opening the magic link.
+              </Text>
+              <Field
+                label="OTP"
+                value={otp}
+                onChangeText={(v) => {
+                  setOtp(v.replace(/\D/g, "").slice(0, 6));
+                  if (otpError) setOtpError("");
+                }}
+                autoCapitalize="none"
+                keyboardType="number-pad"
+                placeholder="123456"
+                error={otpError || undefined}
+              />
+              <Button title="Continue with OTP" onPress={onVerifyOtp} />
+            </GlassCard>
+          ) : null}
+
           <GlassCard>
             <Text
               style={{
@@ -86,8 +161,9 @@ export default function ForgotPasswordScreen() {
                 marginBottom: 16,
               }}
             >
-              Open the email on this phone and tap <Text style={{ color: colors.secondary }}>Reset password</Text>.
-              Check spam if you don’t see it within a minute.
+              Open the email on this phone and tap{" "}
+              <Text style={{ color: colors.secondary }}>Reset password</Text>. Check spam if you
+              don’t see it within a minute.
             </Text>
             <Button
               title={cooldown > 0 ? `Resend in ${cooldown}s` : "Resend link"}

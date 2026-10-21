@@ -26,7 +26,10 @@ export async function getTodayPrompt() {
 }
 
 export async function listJournals() {
-  const { data } = await api.get<{ entries: JournalEntry[] }>("/journals");
+  const { data } = await api.get<{ entries: JournalEntry[]; nextCursor?: string | null }>(
+    "/journals",
+    { params: { limit: 100 } }
+  );
   return data.entries;
 }
 

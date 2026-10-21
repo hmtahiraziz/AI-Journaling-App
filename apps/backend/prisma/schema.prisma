@@ -8,31 +8,36 @@ datasource db {
 }
 
 model User {
-  id           String         @id @default(cuid())
-  email        String         @unique
-  passwordHash String
-  name         String
-  timezone     String         @default("UTC")
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  refreshTokens RefreshToken[]
-  passwordResets PasswordReset[]
-  journalEntries JournalEntry[]
-  moodEntries  MoodEntry[]
-  aiInsights   AiInsight[]
+  id                   String         @id @default(cuid())
+  email                String         @unique
+  passwordHash         String
+  name                 String
+  timezone             String         @default("UTC")
+  /// Privacy Policy / Terms version accepted at signup (server-recorded).
+  consentLegalVersion  String?
+  consentLegalAt       DateTime?
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+  refreshTokens        RefreshToken[]
+  passwordResets       PasswordReset[]
+  journalEntries       JournalEntry[]
+  moodEntries          MoodEntry[]
+  aiInsights           AiInsight[]
 }
 
 model RefreshToken {
   id        String    @id @default(cuid())
   userId    String
-  tokenHash String
+  /// Shared across rotations of the same login session; reuse of an old token revokes the family.
+  familyId  String
+  tokenHash String    @unique
   expiresAt DateTime
   revokedAt DateTime?
   createdAt DateTime  @default(now())
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
-  @@index([tokenHash])
+  @@index([familyId])
 }
 
 model PasswordReset {
@@ -57,18 +62,18 @@ model Prompt {
 }
 
 model JournalEntry {
-  id         String    @id @default(cuid())
-  userId     String
-  promptId   String?
-  body       String
-  isFreeWrite Boolean  @default(false)
-  reflection String?
-  moodId     String?   @unique
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  prompt     Prompt?   @relation(fields: [promptId], references: [id], onDelete: SetNull)
-  mood       MoodEntry? @relation(fields: [moodId], references: [id], onDelete: SetNull)
+  id          String     @id @default(cuid())
+  userId      String
+  promptId    String?
+  body        String
+  isFreeWrite Boolean    @default(false)
+  reflection  String?
+  moodId      String?    @unique
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prompt      Prompt?    @relation(fields: [promptId], references: [id], onDelete: SetNull)
+  mood        MoodEntry? @relation(fields: [moodId], references: [id], onDelete: SetNull)
 
   @@index([userId, createdAt])
 }

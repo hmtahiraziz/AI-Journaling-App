@@ -1,11 +1,11 @@
 import nodemailer from "nodemailer";
 import type { Transporter } from "nodemailer";
-import { env } from "../config/env";
+import { env, isSmtpConfigured } from "../config/env";
 
 let transporter: Transporter | null = null;
 
 function getTransporter(): Transporter | null {
-  if (!env.SMTP_HOST || !env.SMTP_USER || !env.SMTP_PASS) {
+  if (!isSmtpConfigured()) {
     return null;
   }
   if (transporter) return transporter;
@@ -13,7 +13,7 @@ function getTransporter(): Transporter | null {
   transporter = nodemailer.createTransport({
     host: env.SMTP_HOST,
     port: env.SMTP_PORT,
-    secure: env.SMTP_SECURE, // true for 465, false for 587
+    secure: env.SMTP_SECURE,
     auth: {
       user: env.SMTP_USER,
       pass: env.SMTP_PASS,
@@ -24,18 +24,26 @@ function getTransporter(): Transporter | null {
 }
 
 export function isEmailConfigured() {
-  return Boolean(env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASS);
+  return isSmtpConfigured();
 }
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+/**
+ * Sends password-reset email. In production, SMTP is required at boot (env.ts);
+ * this never logs the reset URL or token when NODE_ENV=production.
+ */
 export async function sendPasswordResetEmail(email: string, token: string) {
   const resetUrl = `${env.MOBILE_RESET_URL}?token=${encodeURIComponent(token)}`;
   const mailer = getTransporter();
 
   if (!mailer) {
+    if (env.NODE_ENV === "production") {
+      throw new Error("SMTP is required in production; refusing to log reset URLs.");
+    }
+    // Dev/test only — never enable this path in production.
     console.log(`[Journal IQ] Password reset for ${email}: ${resetUrl}`);
     console.log(
       "[Journal IQ] Tip: set SMTP_HOST, SMTP_USER, SMTP_PASS (Gmail App Password) in apps/backend/.env to send real email."
@@ -82,6 +90,46 @@ export async function sendPasswordResetEmail(email: string, token: string) {
   }
 
   throw new Error(lastError || "Failed to send reset email");
+}
+
+/** Notify the account owner that their password was changed (no secrets in body). */
+export async function sendPasswordChangedEmail(email: string) {
+  const mailer = getTransporter();
+  if (!mailer) {
+    if (env.NODE_ENV === "production") {
+      console.error("[Journal IQ] password-changed email skipped: SMTP not configured");
+      return { delivered: false as const };
+    }
+    console.log(`[Journal IQ] Password changed notification for ${email} (dev, no SMTP)`);
+    return { delivered: false as const };
+  }
+
+  try {
+    const info = await mailer.sendMail({
+      from: env.EMAIL_FROM,
+      to: email,
+      subject: "Your Journal IQ password was changed",
+      text: [
+        "Your Journal IQ password was changed.",
+        "",
+        "If you made this change, no action is needed. All other sessions were signed out.",
+        "If you did not change your password, reset it immediately and contact support.",
+      ].join("\n"),
+      html: `<p>Your Journal IQ password was changed.</p>
+<p>If you made this change, no action is needed. All other sessions were signed out.</p>
+<p>If you did not change your password, reset it immediately and contact support.</p>`,
+    });
+    console.log(
+      `[Journal IQ] Password-changed email sent to ${email} (id=${info.messageId || "ok"})`
+    );
+    return { delivered: true as const };
+  } catch (err) {
+    console.error(
+      "[Journal IQ] password-changed email failed:",
+      err instanceof Error ? err.message : String(err)
+    );
+    return { delivered: false as const };
+  }
 }
 
 function buildResetEmailHtml(resetUrl: string) {
