@@ -9,7 +9,9 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
+  withTiming,
   interpolate,
+  Easing,
 } from "react-native-reanimated";
 import { colors, elevation } from "@/src/theme/colors";
 import {
@@ -218,6 +220,12 @@ function DockBackground({ width, height }: { width: number; height: number }) {
           {shell}
         </BlurView>
       </View>
+    </View>
+  );
+
+  return (
+    <View style={styles.dockTrack} pointerEvents="none">
+      {glass}
     </View>
   );
 
