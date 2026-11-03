@@ -23,7 +23,6 @@ export default function ResetPasswordScreen() {
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [done, setDone] = useState(false);
 
   async function onSubmit() {
     setError("");
@@ -45,48 +44,13 @@ export default function ResetPasswordScreen() {
     setLoading(true);
     try {
       await resetPassword(token, password);
-      toast.success("Password updated");
-      setDone(true);
+      toast.success("Password updated — sign in with your new password");
+      router.replace("/(auth)/signin");
     } catch (e) {
       setError(getErrorMessage(e, "Reset failed"));
     } finally {
       setLoading(false);
     }
-  }
-
-  if (done) {
-    return (
-      <Screen scroll edges={["top", "left", "right", "bottom"]}>
-        <View style={{ paddingBottom: 24 }}>
-          <Text
-            style={{
-              color: colors.ink,
-              fontFamily: "Fraunces_600SemiBold",
-              fontSize: 28,
-              marginTop: 16,
-              marginBottom: 8,
-            }}
-          >
-            Password updated
-          </Text>
-          <Text
-            style={{
-              color: colors.muted,
-              fontFamily: "DMSans_400Regular",
-              fontSize: 15,
-              lineHeight: 22,
-              marginBottom: 20,
-            }}
-          >
-            You can sign in with your new password. For security, other sessions on this account
-            were signed out.
-          </Text>
-          <GlassCard>
-            <Button title="Sign in" onPress={() => router.replace("/(auth)/signin")} />
-          </GlassCard>
-        </View>
-      </Screen>
-    );
   }
 
   return (

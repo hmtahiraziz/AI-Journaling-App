@@ -17,6 +17,7 @@ import { colors, elevation } from "@/src/theme/colors";
 import {
   TAB_CONTENT_NUDGE_Y,
   TAB_FLOAT_GAP,
+  TAB_ICON_EDGE_PAD,
   TAB_SAFE_BOTTOM_FLOOR,
   tabDockHeight,
   tabDockInset,
@@ -29,13 +30,12 @@ import {
 
 /** Soft spring — settles cleanly without bounce. */
 const SPRING = { damping: 22, stiffness: 200, mass: 0.75 };
-/** Opacity / pill fade — smooth cubic ease like native iOS tabs. */
-const FADE = { duration: 240, easing: Easing.out(Easing.cubic) };
-const ACTIVE_DOT = 5;
+/** Liquid pill spring — slightly softer for glass settle. */
+const PILL_SPRING = { damping: 20, stiffness: 180, mass: 0.8 };
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-/** Icon-only tab: larger glyphs, smooth crossfade, soft pill — no layout jump. */
+/** Icon-only tab — muted → primary, soft glass pill. */
 function TabIcon({
   outline,
   solid,
@@ -54,11 +54,11 @@ function TabIcon({
   const progress = useSharedValue(focused ? 1 : 0);
 
   useEffect(() => {
-    progress.value = withTiming(focused ? 1 : 0, FADE);
+    progress.value = withSpring(focused ? 1 : 0, PILL_SPRING);
   }, [focused, progress]);
 
   const stackStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: interpolate(progress.value, [0, 1], [1, 1.05]) }],
+    transform: [{ scale: interpolate(progress.value, [0, 1], [1, 1.04]) }],
   }));
 
   const mutedStyle = useAnimatedStyle(() => ({
@@ -71,12 +71,7 @@ function TabIcon({
 
   const pillStyle = useAnimatedStyle(() => ({
     opacity: interpolate(progress.value, [0, 1], [0, 1]),
-    transform: [{ scale: interpolate(progress.value, [0, 1], [0.82, 1]) }],
-  }));
-
-  const dotStyle = useAnimatedStyle(() => ({
-    opacity: progress.value,
-    transform: [{ scale: interpolate(progress.value, [0, 1], [0.45, 1]) }],
+    transform: [{ scale: interpolate(progress.value, [0, 1], [0.85, 1]) }],
   }));
 
   return (
@@ -85,16 +80,12 @@ function TabIcon({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ selected: focused }}
-      style={[styles.tabItem, { width: pillSize, height: pillSize + ACTIVE_DOT + 4 }]}
+      style={[styles.tabItem, { width: pillSize, height: pillSize }]}
     >
       <Animated.View style={[styles.iconStack, { width: pillSize, height: pillSize }, stackStyle]}>
         <Animated.View
           pointerEvents="none"
-          style={[
-            styles.activePill,
-            { borderRadius: pillSize / 2 },
-            pillStyle,
-          ]}
+          style={[styles.activePill, { borderRadius: pillSize / 2 }, pillStyle]}
         />
         <Animated.View style={[StyleSheet.absoluteFill, styles.iconCenter, mutedStyle]}>
           <Ionicons name={outline} size={iconSize} color={colors.muted} />
@@ -102,7 +93,6 @@ function TabIcon({
         <Animated.View style={[StyleSheet.absoluteFill, styles.iconCenter, activeStyle]}>
           <Ionicons name={solid} size={iconSize} color={colors.primary} />
         </Animated.View>
-        <Animated.View pointerEvents="none" style={[styles.activeDot, dotStyle]} />
       </Animated.View>
     </View>
   );
@@ -166,25 +156,34 @@ function WriteOrb({
   );
 }
 
-/** Liquid-glass pill — centered in the full-width tab bar track. */
+/** Dark liquid-glass dock — same language as GlassCard, subtle primary wash. */
 function DockBackground({ width, height }: { width: number; height: number }) {
   const radius = Math.round(height / 2);
   const shell = (
     <>
       <LinearGradient
-        colors={["rgba(254,254,254,0.14)", "rgba(1,18,47,0.08)", "rgba(1,18,47,0.28)"]}
-        locations={[0, 0.45, 1]}
+        colors={[
+          "rgba(254,254,254,0.12)",
+          "rgba(196,229,98,0.28)",
+          "rgba(196,229,98,0.16)",
+          "rgba(1,18,47,0.28)",
+        ]}
+        locations={[0, 0.35, 0.7, 1]}
         style={StyleSheet.absoluteFill}
         pointerEvents="none"
       />
-      <View pointerEvents="none" style={styles.dockHighlight} />
+      <View
+        pointerEvents="none"
+        style={[StyleSheet.absoluteFill, { backgroundColor: colors.dockGlass }]}
+      />
     </>
   );
 
+  // Shadow on outer shell; border on clipped inner — avoids double outline.
   const glass = (
     <View
       style={[
-        styles.dockPill,
+        styles.dockShadow,
         {
           width,
           height,
@@ -193,22 +192,40 @@ function DockBackground({ width, height }: { width: number; height: number }) {
         },
       ]}
     >
-      <BlurView
-        intensity={Platform.OS === "ios" ? 78 : 55}
-        tint="dark"
-        style={[StyleSheet.absoluteFill, { borderRadius: radius }]}
+      <View
+        style={[
+          styles.dockPill,
+          {
+            width,
+            height,
+            borderRadius: radius,
+          },
+        ]}
       >
-        <View
-          style={[
-            StyleSheet.absoluteFill,
-            {
-              backgroundColor:
-                Platform.OS === "ios" ? "rgba(1,18,47,0.46)" : "rgba(1,18,47,0.62)",
-            },
-          ]}
-        />
-        {shell}
-      </BlurView>
+        <BlurView
+          intensity={Platform.OS === "ios" ? 70 : 52}
+          tint="dark"
+          style={[StyleSheet.absoluteFill, { borderRadius: radius, elevation: 0 }]}
+        >
+          <View
+            style={[
+              StyleSheet.absoluteFill,
+              {
+                // Higher fill opacity so the dock isn’t too see-through
+                backgroundColor:
+                  Platform.OS === "ios" ? "rgba(1,18,47,0.58)" : "rgba(1,18,47,0.72)",
+              },
+            ]}
+          />
+          {shell}
+        </BlurView>
+      </View>
+    </View>
+  );
+
+  return (
+    <View style={styles.dockTrack} pointerEvents="none">
+      {glass}
     </View>
   );
 
@@ -231,7 +248,7 @@ export default function TabsLayout() {
     const orbSize = tabOrbSize(width);
     const orbLift = tabOrbLift(width);
     const orbSlot = tabOrbSlot(orbSize);
-    const pillSize = Math.round(iconSize + 16);
+    const pillSize = Math.round(iconSize + 12);
     return { dockWidth, dockInset, dockHeight, iconSize, orbSize, orbLift, orbSlot, pillSize };
   }, [width]);
 
@@ -248,8 +265,7 @@ export default function TabsLayout() {
           right: 0,
           bottom: dockBottom,
           height: metrics.dockHeight,
-          // Side padding keeps icons inside the centered pill width
-          paddingHorizontal: metrics.dockInset,
+          paddingHorizontal: metrics.dockInset + TAB_ICON_EDGE_PAD,
           paddingBottom: 0,
           paddingTop: 0,
           margin: 0,
@@ -267,13 +283,16 @@ export default function TabsLayout() {
           height: metrics.dockHeight,
           paddingTop: 0,
           paddingBottom: 0,
+          paddingHorizontal: 0,
           margin: 0,
           justifyContent: "center",
           alignItems: "center",
         },
         tabBarIconStyle: {
           marginTop: TAB_CONTENT_NUDGE_Y,
-          marginBottom: -TAB_CONTENT_NUDGE_Y,
+          marginBottom: 0,
+          width: metrics.pillSize,
+          height: metrics.pillSize,
         },
         tabBarBackground: () => (
           <DockBackground width={metrics.dockWidth} height={metrics.dockHeight} />
@@ -377,24 +396,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  dockShadow: {
+    backgroundColor: "transparent",
+  },
   dockPill: {
     overflow: "hidden",
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.glassBorder,
-  },
-  dockHighlight: {
-    position: "absolute",
-    top: 0,
-    left: 12,
-    right: 12,
-    height: StyleSheet.hairlineWidth * 2,
-    borderRadius: 1,
-    backgroundColor: colors.glassHighlight,
-    opacity: 0.9,
+    backgroundColor: "transparent",
   },
   tabItem: {
     alignItems: "center",
     justifyContent: "center",
+    overflow: "visible",
   },
   iconStack: {
     alignItems: "center",
@@ -404,20 +418,12 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFill,
     backgroundColor: colors.primaryGlowSoft,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(196,229,98,0.28)",
+    borderColor: "rgba(196,229,98,0.22)",
   },
   iconCenter: {
     alignItems: "center",
     justifyContent: "center",
-  },
-  activeDot: {
-    position: "absolute",
-    bottom: -ACTIVE_DOT - 1,
-    alignSelf: "center",
-    width: ACTIVE_DOT,
-    height: ACTIVE_DOT,
-    borderRadius: ACTIVE_DOT / 2,
-    backgroundColor: colors.primary,
+    padding: 0,
   },
   orbSlot: {
     alignItems: "center",
@@ -427,12 +433,13 @@ const styles = StyleSheet.create({
     position: "absolute",
     alignItems: "center",
     justifyContent: "center",
+    ...elevation.fab,
   },
   orbCircle: {
     backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 2.5,
-    borderColor: "rgba(254,254,254,0.38)",
+    borderWidth: 2,
+    borderColor: "rgba(254,254,254,0.32)",
   },
 });

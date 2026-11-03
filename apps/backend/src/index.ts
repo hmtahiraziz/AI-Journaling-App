@@ -13,10 +13,27 @@ import meRoutes from "./routes/me";
 
 const app = express();
 
-app.use(helmet());
+/** Railway / reverse proxies — required for correct client IP on rate limits. */
+app.set("trust proxy", 1);
+app.disable("x-powered-by");
+
+app.use(
+  helmet({
+    hsts: env.NODE_ENV === "production" ? { maxAge: 15552000, includeSubDomains: true } : false,
+  })
+);
+
+const corsOriginList =
+  !env.CLIENT_ORIGIN || env.CLIENT_ORIGIN === "*"
+    ? ([] as string[])
+    : env.CLIENT_ORIGIN.split(",")
+        .map((o) => o.trim())
+        .filter(Boolean);
+
 app.use(
   cors({
-    origin: env.CLIENT_ORIGIN === "*" ? true : env.CLIENT_ORIGIN.split(","),
+    origin: corsOriginList.length > 0 ? corsOriginList : false,
+    credentials: false,
   })
 );
 app.use(express.json({ limit: "1mb" }));
@@ -33,7 +50,6 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-/** Stricter limit for password-reset requests (abuse / inbox flooding). */
 const forgotPasswordLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
@@ -42,7 +58,16 @@ const forgotPasswordLimiter = rateLimit({
   message: { error: "Too many reset requests. Please wait a few minutes and try again." },
 });
 
+const resetPasswordLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many reset attempts. Please wait a few minutes and try again." },
+});
+
 app.use("/auth/forgot-password", forgotPasswordLimiter);
+app.use("/auth/reset-password", resetPasswordLimiter);
 app.use("/auth", authLimiter, authRoutes);
 app.use("/prompts", promptsRoutes);
 app.use("/journals", journalsRoutes);
@@ -52,7 +77,7 @@ app.use("/me", meRoutes);
 
 app.use(errorHandler);
 
-const port = Number(process.env.PORT || 5000);
+const port = Number(process.env.PORT || env.PORT || 5000);
 const host = "0.0.0.0";
 
 const server = app.listen(port, host, () => {

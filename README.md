@@ -1,21 +1,21 @@
 # Journal IQ
 
-Production-style AI journaling app (Expo SDK 54 + Express + Neon) for reflection and mood tracking.
+Production-style AI journaling app (Expo SDK 57 + Express + Neon) for reflection and mood tracking.
 
 ## Structure
 
 ```
 apps/backend      Node.js / Express / Prisma / JWT / OpenAI / Nodemailer (Gmail SMTP)
-apps/mobile       Expo SDK 54 / Router v6 / NativeWind / Axios
+apps/mobile       Expo SDK 57 / Router / NativeWind / Axios
 packages/shared   Shared Zod schemas + prompt seed data
 ```
 
 ## Prerequisites
 
 - Node.js 20+
-- Expo Go (SDK 54) on your phone, or Android emulator
+- Expo Go (SDK 57) on your phone, or Android emulator
 - Neon Postgres database
-- Optional: `OPENAI_API_KEY`, Gmail SMTP (`SMTP_USER` + App Password) for reset emails
+- Optional in development: `OPENAI_API_KEY`. Gmail SMTP (`SMTP_USER` + App Password) for reset emails — **required in production**
 
 **Security:** If a Neon connection string was shared in chat, rotate the password in the Neon console and update `apps/backend/.env`.
 
@@ -64,14 +64,15 @@ npx expo start --lan --clear
 
 Or from the repo root: `npm run dev:mobile`
 
-Scan the QR with Expo Go (SDK 54).
+Scan the QR with Expo Go (matching SDK).
 
 ## Auth
 
-- Sign up / Sign in / Sign out
-- Forgot password (Nodemailer + Gmail SMTP; logs reset URL to API console if SMTP is not configured)
-- JWT access (15m) + refresh rotation stored hashed in Postgres
-- Mobile Axios client attaches Bearer token and refreshes on 401
+- Sign up / Sign in / Sign out (signup stores Privacy/Terms consent version + timestamp server-side)
+- Forgot password (Nodemailer + Gmail SMTP). **Production requires SMTP** — reset URLs are never logged when `NODE_ENV=production`. In local development only, unset SMTP logs the reset URL to the console.
+- JWT access (≤15m, HS256 + iss/aud) + opaque refresh tokens hashed in Postgres, rotated atomically with reuse detection (token family revoke)
+- Export / account delete require password confirmation
+- Mobile Axios client stores tokens in SecureStore, attaches Bearer only to the API host, and refreshes on 401 with a single in-flight promise
 
 ## Features
 
@@ -92,7 +93,7 @@ Production image is built from the root `Dockerfile` (`railway.toml` uses `build
 1. New Railway project → Deploy from GitHub → this repo.
 2. Keep **Root Directory** empty (repo root) so npm workspaces work.
 3. Confirm builder is **Dockerfile** (from `railway.toml`). If you switch back to Railpack, set Variable `RAILPACK_NO_SPA=1` and keep `railpack.json` (`provider: node`).
-4. Add Variables (see `.env.example`): `DATABASE_URL`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `NODE_ENV=production`, plus optional `OPENAI_API_KEY` / SMTP.
+4. Add Variables (see `.env.example`): `DATABASE_URL`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` (≥32 chars, not placeholders), `NODE_ENV=production`, and **required** SMTP (`SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`). Optional: `OPENAI_API_KEY`.
 5. Generate a public domain → confirm `https://YOUR-APP.up.railway.app/health`.
 6. Point mobile at it: `EXPO_PUBLIC_API_URL=https://YOUR-APP.up.railway.app`.
 7. Optional one-time seed: `npm run db:seed` against the production `DATABASE_URL`.

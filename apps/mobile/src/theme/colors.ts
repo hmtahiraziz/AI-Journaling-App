@@ -10,11 +10,12 @@ export const colors = {
   glassStrong: "rgba(254,254,254,0.14)",
   /** Top rim highlight for liquid-glass surfaces */
   glassHighlight: "rgba(254,254,254,0.22)",
+  /** Soft primary wash inside floating dock — tinted glass */
+  dockGlass: "rgba(196,229,98,0.22)",
   muted: "rgba(254,254,254,0.55)",
-  /** Soft lime glow for FAB / active accents */
+  /** Soft lime accents for active UI */
   primaryGlow: "rgba(196,229,98,0.35)",
-  /** Active tab pill behind icon */
-  primaryGlowSoft: "rgba(196,229,98,0.18)",
+  primaryGlowSoft: "rgba(196,229,98,0.16)",
   /** Card / dock shadow on dark navy */
   shadow: "rgba(0,0,0,0.45)",
 } as const;
@@ -38,17 +39,17 @@ export const elevation = {
     elevation: 4,
   },
   fab: {
-    shadowColor: "#C4E562",
-    shadowOpacity: 0.42,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 5 },
+    shadowColor: "#000000",
+    shadowOpacity: 0.28,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
     elevation: 6,
   },
   dock: {
     shadowColor: "#000000",
-    shadowOpacity: 0.32,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 8,
+    shadowOpacity: 0.22,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
   },
 } as const;

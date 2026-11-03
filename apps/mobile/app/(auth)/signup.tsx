@@ -6,7 +6,7 @@ import { BrandMark } from "@/src/components/BrandMark";
 import { Field } from "@/src/components/Field";
 import { Button } from "@/src/components/Button";
 import { GlassCard } from "@/src/components/GlassCard";
-import { signup } from "@/src/api/auth.api";
+import { LEGAL_CONSENT_VERSION, signup } from "@/src/api/auth.api";
 import { getErrorMessage } from "@/src/api/client";
 import { toast } from "@/src/lib/toast";
 import { useAuthStore } from "@/src/store/auth";
@@ -37,7 +37,12 @@ export default function SignUpScreen() {
     }
     setLoading(true);
     try {
-      const data = await signup({ name: name.trim(), email: email.trim(), password });
+      const data = await signup({
+        name: name.trim(),
+        email: email.trim(),
+        password,
+        acceptedLegalVersion: LEGAL_CONSENT_VERSION,
+      });
       setUser(data.user);
       toast.success("Welcome to Journal IQ");
       router.replace("/(app)/(tabs)/home");

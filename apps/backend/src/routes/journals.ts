@@ -1,5 +1,10 @@
 import { Router } from "express";
-import { createJournalSchema, updateJournalSchema } from "@journal-iq/shared";
+import {
+  createJournalSchema,
+  idParamSchema,
+  listJournalsQuerySchema,
+  updateJournalSchema,
+} from "@journal-iq/shared";
 import { prisma } from "../lib/prisma";
 import { AppError, asyncHandler } from "../middleware/error";
 import type { AuthRequest } from "../middleware/auth";
@@ -14,12 +19,20 @@ router.use(authenticate);
 router.get(
   "/",
   asyncHandler(async (req: AuthRequest, res) => {
+    const query = listJournalsQuerySchema.parse(req.query);
     const entries = await prisma.journalEntry.findMany({
-      where: { userId: req.user!.userId },
+      where: {
+        userId: req.user!.userId,
+        ...(query.cursor ? { id: { lt: query.cursor } } : {}),
+      },
       orderBy: { createdAt: "desc" },
+      take: query.limit,
       include: { prompt: true, mood: true },
     });
-    res.json({ entries });
+    res.json({
+      entries,
+      nextCursor: entries.length === query.limit ? entries[entries.length - 1]?.id : null,
+    });
   })
 );
 
@@ -58,8 +71,9 @@ router.post(
 router.get(
   "/:id",
   asyncHandler(async (req: AuthRequest, res) => {
+    const { id } = idParamSchema.parse(req.params);
     const entry = await prisma.journalEntry.findFirst({
-      where: { id: req.params.id, userId: req.user!.userId },
+      where: { id, userId: req.user!.userId },
       include: { prompt: true, mood: true },
     });
     if (!entry) throw new AppError(404, "Entry not found");
@@ -70,9 +84,10 @@ router.get(
 router.patch(
   "/:id",
   asyncHandler(async (req: AuthRequest, res) => {
+    const { id } = idParamSchema.parse(req.params);
     const data = updateJournalSchema.parse(req.body);
     const existing = await prisma.journalEntry.findFirst({
-      where: { id: req.params.id, userId: req.user!.userId },
+      where: { id, userId: req.user!.userId },
     });
     if (!existing) throw new AppError(404, "Entry not found");
 
@@ -93,8 +108,9 @@ router.patch(
 router.delete(
   "/:id",
   asyncHandler(async (req: AuthRequest, res) => {
+    const { id } = idParamSchema.parse(req.params);
     const existing = await prisma.journalEntry.findFirst({
-      where: { id: req.params.id, userId: req.user!.userId },
+      where: { id, userId: req.user!.userId },
     });
     if (!existing) throw new AppError(404, "Entry not found");
     await prisma.journalEntry.delete({ where: { id: existing.id } });
@@ -106,16 +122,14 @@ router.post(
   "/:id/reflect",
   reflectLimiter,
   asyncHandler(async (req: AuthRequest, res) => {
+    const { id } = idParamSchema.parse(req.params);
     const existing = await prisma.journalEntry.findFirst({
-      where: { id: req.params.id, userId: req.user!.userId },
+      where: { id, userId: req.user!.userId },
       include: { prompt: true },
     });
     if (!existing) throw new AppError(404, "Entry not found");
 
-    const reflection = await generateReflection(
-      existing.body,
-      existing.prompt?.text
-    );
+    const reflection = await generateReflection(existing.body, existing.prompt?.text);
 
     const entry = await prisma.journalEntry.update({
       where: { id: existing.id },

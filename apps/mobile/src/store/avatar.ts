@@ -1,7 +1,6 @@
 import { create } from "zustand";
 import * as FileSystem from "expo-file-system/legacy";
 import * as ImagePicker from "expo-image-picker";
-import { Alert, Platform } from "react-native";
 import { toast } from "@/src/lib/toast";
 
 const AVATAR_DIR = `${FileSystem.documentDirectory}avatars/`;
@@ -48,10 +47,7 @@ export const useAvatarStore = create<AvatarState>((set) => ({
   pickAndSave: async (userId) => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert(
-        "Permission needed",
-        "Allow photo access to set your profile picture."
-      );
+      toast.info("Allow photo access to set your profile picture.");
       return false;
     }
 
@@ -85,8 +81,8 @@ export const useAvatarStore = create<AvatarState>((set) => ({
       const path = avatarPath(userId);
       const info = await FileSystem.getInfoAsync(path);
       if (info.exists) await FileSystem.deleteAsync(path, { idempotent: true });
-    } catch {
-      /* ignore */
+    } catch (e) {
+      console.warn(e);
     }
     set({ uri: null });
   },
@@ -97,7 +93,7 @@ export const useAvatarStore = create<AvatarState>((set) => ({
 export async function pickFromCamera(userId: string): Promise<boolean> {
   const permission = await ImagePicker.requestCameraPermissionsAsync();
   if (!permission.granted) {
-    Alert.alert("Permission needed", "Allow camera access to take a profile photo.");
+    toast.info("Allow camera access to take a profile photo.");
     return false;
   }
 
@@ -120,45 +116,4 @@ export async function pickFromCamera(userId: string): Promise<boolean> {
     toast.error("Couldn’t save photo — try again");
     return false;
   }
-}
-
-export function showAvatarPicker(userId: string, onDone?: () => void) {
-  const buttons: {
-    text: string;
-    style?: "cancel" | "destructive" | "default";
-    onPress?: () => void;
-  }[] = [
-    {
-      text: "Photo library",
-      onPress: async () => {
-        const ok = await useAvatarStore.getState().pickAndSave(userId);
-        if (ok) onDone?.();
-      },
-    },
-  ];
-
-  if (Platform.OS !== "web") {
-    buttons.push({
-      text: "Take photo",
-      onPress: async () => {
-        const ok = await pickFromCamera(userId);
-        if (ok) onDone?.();
-      },
-    });
-  }
-
-  if (useAvatarStore.getState().uri) {
-    buttons.push({
-      text: "Remove photo",
-      style: "destructive",
-      onPress: async () => {
-        await useAvatarStore.getState().remove(userId);
-        onDone?.();
-      },
-    });
-  }
-
-  buttons.push({ text: "Cancel", style: "cancel" });
-
-  Alert.alert("Profile photo", "Choose how you’d like to update your photo.", buttons);
 }

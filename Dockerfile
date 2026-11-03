@@ -27,4 +27,13 @@ RUN npm run build:backend \
 ENV NODE_ENV=production
 EXPOSE 5000
 
+RUN groupadd --system --gid 1001 nodejs \
+  && useradd --system --uid 1001 --gid nodejs journaliq \
+  && chown -R journaliq:nodejs /app
+
+USER journaliq
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||5000)+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+
 CMD ["npm", "run", "start:backend"]

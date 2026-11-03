@@ -12,6 +12,7 @@ import { getErrorMessage } from "@/src/api/client";
 import { toast } from "@/src/lib/toast";
 import { colors } from "@/src/theme/colors";
 import { MEDICAL_DISCLAIMER } from "@/src/constants/disclaimer";
+import { AI_DISCLOSURE_SHORT } from "@/src/constants/support";
 
 export default function WriteScreen() {
   const router = useRouter();
@@ -21,6 +22,8 @@ export default function WriteScreen() {
   const [body, setBody] = useState("");
   const [moodScore, setMoodScore] = useState<number | null>(null);
   const [moodLabel, setMoodLabel] = useState("");
+  /** Opt-in: journal text is only sent to OpenAI when this is true. */
+  const [wantAiReflection, setWantAiReflection] = useState(false);
 
   const promptQuery = useQuery({ queryKey: ["prompt-today"], queryFn: getTodayPrompt });
 
@@ -37,13 +40,18 @@ export default function WriteScreen() {
         promptId: isFreeWrite ? null : promptQuery.data?.prompt.id,
         moodId,
       });
-      return reflectOnJournal(entry.id);
+      if (wantAiReflection) {
+        return reflectOnJournal(entry.id);
+      }
+      return entry;
     },
     onSuccess: (entry) => {
       qc.invalidateQueries({ queryKey: ["journals"] });
       qc.invalidateQueries({ queryKey: ["mood-stats"] });
-      qc.invalidateQueries({ queryKey: ["weekly-insight"] });
-      toast.success(entry.reflection ? "Entry saved with reflection" : "Entry saved");
+      if (wantAiReflection) {
+        qc.invalidateQueries({ queryKey: ["weekly-insight"] });
+      }
+      toast.success(entry.reflection ? "Saved with AI reflection" : "Entry saved");
       router.replace(`/(app)/entry/${entry.id}`);
     },
     onError: (e) => toast.error(getErrorMessage(e, "Couldn’t save entry")),
@@ -77,6 +85,7 @@ export default function WriteScreen() {
           onValueChange={setIsFreeWrite}
           trackColor={{ true: colors.primary, false: "rgba(254,254,254,0.2)" }}
           thumbColor={colors.ink}
+          accessibilityLabel="Free-write mode"
         />
       </View>
 
@@ -106,8 +115,42 @@ export default function WriteScreen() {
 
       <Field label="Your words" value={body} onChangeText={setBody} multiline placeholder="Start here…" />
 
+      <GlassCard className="mb-4">
+        <View className="flex-row items-center justify-between">
+          <View className="flex-1 pr-3">
+            <Text className="font-sansMedium" style={{ color: colors.ink }}>
+              AI reflection
+            </Text>
+            <Text className="font-sans text-xs mt-1" style={{ color: colors.muted, lineHeight: 17 }}>
+              Off by default. Your entry always saves either way.
+            </Text>
+          </View>
+          <Switch
+            value={wantAiReflection}
+            onValueChange={setWantAiReflection}
+            trackColor={{ true: colors.primary, false: "rgba(254,254,254,0.2)" }}
+            thumbColor={colors.ink}
+            accessibilityLabel="Request AI reflection"
+            accessibilityState={{ checked: wantAiReflection }}
+          />
+        </View>
+        {wantAiReflection ? (
+          <Text className="font-sans text-xs mt-3" style={{ color: colors.secondary, lineHeight: 17 }}>
+            {AI_DISCLOSURE_SHORT}
+          </Text>
+        ) : null}
+      </GlassCard>
+
       <Button
-        title={save.isPending ? "Reflecting…" : "Save & reflect"}
+        title={
+          save.isPending
+            ? wantAiReflection
+              ? "Saving & reflecting…"
+              : "Saving…"
+            : wantAiReflection
+              ? "Save & get AI reflection"
+              : "Save entry"
+        }
         onPress={() => save.mutate()}
         loading={save.isPending}
         disabled={body.trim().length < 1}

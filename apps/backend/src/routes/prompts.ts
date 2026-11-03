@@ -12,6 +12,7 @@ router.get(
   asyncHandler(async (req: AuthRequest, res) => {
     const user = await prisma.user.findUniqueOrThrow({
       where: { id: req.user!.userId },
+      select: { timezone: true },
     });
 
     const prompts = await prisma.prompt.findMany({ orderBy: { sortOrder: "asc" } });

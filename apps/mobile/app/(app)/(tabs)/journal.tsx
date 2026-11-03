@@ -4,7 +4,6 @@ import {
   View,
   Pressable,
   ActivityIndicator,
-  Alert,
   TextInput,
   ScrollView,
   useWindowDimensions,
@@ -16,6 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Screen } from "@/src/components/Screen";
 import { GlassCard } from "@/src/components/GlassCard";
 import { AppHeader } from "@/src/components/AppHeader";
+import { ConfirmDialog } from "@/src/components/ConfirmDialog";
 import { deleteJournal, listJournals, type JournalEntry } from "@/src/api/journals.api";
 import { getErrorMessage } from "@/src/api/client";
 import { toast } from "@/src/lib/toast";
@@ -86,6 +86,7 @@ export default function JournalListScreen() {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [menuId, setMenuId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({ queryKey: ["journals"], queryFn: listJournals });
 
@@ -93,6 +94,7 @@ export default function JournalListScreen() {
     mutationFn: deleteJournal,
     onSuccess: () => {
       setMenuId(null);
+      setDeleteId(null);
       qc.invalidateQueries({ queryKey: ["journals"] });
       toast.success("Entry deleted");
     },
@@ -116,10 +118,8 @@ export default function JournalListScreen() {
   }, [data, filter, query]);
 
   function onDelete(id: string) {
-    Alert.alert("Delete entry?", "This cannot be undone.", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: () => remove.mutate(id) },
-    ]);
+    setMenuId(null);
+    setDeleteId(id);
   }
 
   const chips = (
@@ -268,6 +268,22 @@ export default function JournalListScreen() {
           })
         )}
       </View>
+
+      <ConfirmDialog
+        visible={!!deleteId}
+        title="Delete entry?"
+        message="This permanently removes this journal entry. This cannot be undone."
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        destructive
+        loading={remove.isPending}
+        onConfirm={() => {
+          if (deleteId) remove.mutate(deleteId);
+        }}
+        onCancel={() => {
+          if (!remove.isPending) setDeleteId(null);
+        }}
+      />
     </Screen>
   );
 }

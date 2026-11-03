@@ -15,9 +15,16 @@ export function hashToken(token: string) {
   return crypto.createHash("sha256").update(token).digest("hex");
 }
 
+export function createTokenFamilyId() {
+  return crypto.randomBytes(16).toString("hex");
+}
+
 export function createAccessToken(payload: { userId: string; email: string }) {
   return jwt.sign(payload, env.JWT_ACCESS_SECRET, {
     expiresIn: env.JWT_ACCESS_EXPIRES,
+    algorithm: "HS256",
+    issuer: env.JWT_ISSUER,
+    audience: env.JWT_AUDIENCE,
   } as jwt.SignOptions);
 }
 
@@ -26,7 +33,11 @@ export function createRefreshTokenValue() {
 }
 
 export function verifyAccessToken(token: string) {
-  return jwt.verify(token, env.JWT_ACCESS_SECRET) as {
+  return jwt.verify(token, env.JWT_ACCESS_SECRET, {
+    algorithms: ["HS256"],
+    issuer: env.JWT_ISSUER,
+    audience: env.JWT_AUDIENCE,
+  }) as {
     userId: string;
     email: string;
   };
