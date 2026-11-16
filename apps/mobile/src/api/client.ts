@@ -1,11 +1,29 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
+import { Platform } from "react-native";
 import * as SecureStore from "expo-secure-store";
 
 const rawUrl = (process.env.EXPO_PUBLIC_API_URL || "").trim().replace(/\/$/, "");
 
+/** Android emulator cannot reach the host via localhost — remap to 10.0.2.2. */
+function rewriteDevHost(url: string): string {
+  if (Platform.OS !== "android") return url;
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1") {
+      parsed.hostname = "10.0.2.2";
+      return parsed.toString().replace(/\/$/, "");
+    }
+  } catch {
+    /* keep original */
+  }
+  return url;
+}
+
 function resolveApiUrl(): string {
   if (__DEV__) {
-    return rawUrl || "http://localhost:4000";
+    const fallback =
+      Platform.OS === "android" ? "http://10.0.2.2:4000" : "http://localhost:4000";
+    return rewriteDevHost(rawUrl || fallback);
   }
   if (!rawUrl) {
     throw new Error("EXPO_PUBLIC_API_URL must be set to an https:// API URL in production builds.");
