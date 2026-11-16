@@ -9,6 +9,7 @@ import { GlassCard } from "@/src/components/GlassCard";
 import { LEGAL_CONSENT_VERSION, signup } from "@/src/api/auth.api";
 import { getErrorMessage } from "@/src/api/client";
 import { toast } from "@/src/lib/toast";
+import { isValidEmail } from "@/src/lib/validation";
 import { useAuthStore } from "@/src/store/auth";
 import { colors } from "@/src/theme/colors";
 import { MEDICAL_DISCLAIMER, MEDICAL_DISCLAIMER_SHORT } from "@/src/constants/disclaimer";
@@ -25,10 +26,15 @@ export default function SignUpScreen() {
   const [error, setError] = useState("");
   const [agreed, setAgreed] = useState(false);
 
+  const nameOk = name.trim().length >= 3;
+  const emailOk = isValidEmail(email);
+  const passwordOk = password.length >= 8;
+  const canSubmit = nameOk && emailOk && passwordOk && agreed;
+
   async function onSubmit() {
     setError("");
-    if (!name.trim() || !email.trim() || password.length < 8) {
-      setError("Name, email, and a password of at least 8 characters are required.");
+    if (!nameOk || !emailOk || !passwordOk) {
+      setError("Name (3+ chars), a valid email, and a password of at least 8 characters are required.");
       return;
     }
     if (!agreed) {
@@ -184,7 +190,7 @@ export default function SignUpScreen() {
               {error}
             </Text>
           ) : null}
-          <Button title="Sign up" onPress={onSubmit} loading={loading} disabled={!agreed} />
+          <Button title="Sign up" onPress={onSubmit} loading={loading} disabled={!canSubmit} />
         </GlassCard>
 
         <View

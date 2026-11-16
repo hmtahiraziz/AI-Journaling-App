@@ -7,9 +7,9 @@ import { Button } from "@/src/components/Button";
 import { GlassCard } from "@/src/components/GlassCard";
 import { forgotPassword, type ForgotPasswordResponse } from "@/src/api/auth.api";
 import { getErrorMessage } from "@/src/api/client";
+import { isValidEmail } from "@/src/lib/validation";
 import { colors } from "@/src/theme/colors";
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const RESEND_COOLDOWN_SEC = 60;
 
 export default function ForgotPasswordScreen() {
@@ -23,6 +23,7 @@ export default function ForgotPasswordScreen() {
   const [localReset, setLocalReset] = useState<ForgotPasswordResponse["localReset"]>();
   const [otp, setOtp] = useState("");
   const [otpError, setOtpError] = useState("");
+  const canSubmit = isValidEmail(email);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -34,7 +35,7 @@ export default function ForgotPasswordScreen() {
     setError("");
     setOtpError("");
     const trimmed = email.trim().toLowerCase();
-    if (!EMAIL_RE.test(trimmed)) {
+    if (!isValidEmail(trimmed)) {
       setError("Enter a valid email address.");
       return;
     }
@@ -169,7 +170,7 @@ export default function ForgotPasswordScreen() {
               title={cooldown > 0 ? `Resend in ${cooldown}s` : "Resend link"}
               onPress={onSubmit}
               loading={loading}
-              disabled={cooldown > 0}
+              disabled={!canSubmit || cooldown > 0}
               variant="secondary"
             />
             <View style={{ height: 12 }} />
@@ -231,7 +232,12 @@ export default function ForgotPasswordScreen() {
               {error}
             </Text>
           ) : null}
-          <Button title="Send reset link" onPress={onSubmit} loading={loading} />
+          <Button
+            title="Send reset link"
+            onPress={onSubmit}
+            loading={loading}
+            disabled={!canSubmit}
+          />
         </GlassCard>
 
         <View style={{ marginTop: 16 }}>

@@ -24,6 +24,10 @@ export default function ResetPasswordScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const passwordOk = password.length >= 8;
+  const confirmOk = confirm.length >= 8 && confirm === password;
+  const canSubmit = Boolean(token) && passwordOk && confirmOk;
+
   async function onSubmit() {
     setError("");
     if (!token) {
@@ -32,11 +36,11 @@ export default function ResetPasswordScreen() {
       );
       return;
     }
-    if (password.length < 8) {
+    if (!passwordOk) {
       setError("Use at least 8 characters.");
       return;
     }
-    if (password !== confirm) {
+    if (!confirmOk) {
       setError("Passwords don’t match.");
       return;
     }
@@ -117,7 +121,7 @@ export default function ResetPasswordScreen() {
             title="Update password"
             onPress={onSubmit}
             loading={loading}
-            disabled={!token}
+            disabled={!canSubmit}
           />
           {!token ? (
             <View style={{ marginTop: 12 }}>

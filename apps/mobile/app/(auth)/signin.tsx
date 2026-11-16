@@ -9,6 +9,7 @@ import { GlassCard } from "@/src/components/GlassCard";
 import { signin } from "@/src/api/auth.api";
 import { getErrorMessage } from "@/src/api/client";
 import { toast } from "@/src/lib/toast";
+import { isValidEmail } from "@/src/lib/validation";
 import { useAuthStore } from "@/src/store/auth";
 import { colors } from "@/src/theme/colors";
 
@@ -22,10 +23,12 @@ export default function SignInScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const canSubmit = isValidEmail(email) && password.length >= 1;
+
   async function onSubmit() {
     setError("");
-    if (!email.trim() || !password) {
-      setError("Enter email and password.");
+    if (!canSubmit) {
+      setError("Enter a valid email and password.");
       return;
     }
     setLoading(true);
@@ -114,7 +117,7 @@ export default function SignInScreen() {
             </Pressable>
           </Link>
 
-          <Button title="Sign in" onPress={onSubmit} loading={loading} />
+          <Button title="Sign in" onPress={onSubmit} loading={loading} disabled={!canSubmit} />
         </GlassCard>
 
         <View
