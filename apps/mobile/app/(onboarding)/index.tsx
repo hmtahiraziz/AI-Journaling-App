@@ -7,7 +7,6 @@ import {
   Text,
   useWindowDimensions,
   View,
-  ViewToken,
 } from "react-native";
 import { useRouter } from "expo-router";
 import Animated, {
@@ -60,27 +59,15 @@ export default function OnboardingScreen() {
   const complete = useOnboardingStore((s) => s.complete);
   const { width, height } = useWindowDimensions();
   const horizontalPad = width < 360 ? 16 : width < 414 ? 20 : 24;
-  const pageWidth = Math.min(width, 520) - horizontalPad * 2;
+  /** Full column width so cards slide flush to the screen edge (cancels Screen pad). */
+  const pageWidth = Math.min(width, 520);
   const compact = height < 720 || width < 360;
+  /** Shared inner min-height so every slide card matches the tallest copy. */
+  const cardInnerMin = compact ? 168 : 192;
 
   const [index, setIndex] = useState(0);
   const listRef = useRef<FlatList<(typeof SLIDES)[number]>>(null);
   const progress = useSharedValue(0);
-
-  const onViewableItemsChanged = useRef(
-    ({ viewableItems }: { viewableItems: ViewToken[] }) => {
-      if (viewableItems[0]?.index != null) {
-        const next = viewableItems[0].index;
-        setIndex(next);
-        progress.value = withTiming(next, {
-          duration: 280,
-          easing: Easing.out(Easing.cubic),
-        });
-      }
-    }
-  ).current;
-
-  const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 60 }).current;
 
   const ctaStyle = useAnimatedStyle(() => {
     const last = SLIDES.length - 1;
@@ -97,9 +84,6 @@ export default function OnboardingScreen() {
     return {
       opacity: 1 - onLast,
       transform: [{ translateY: interpolate(onLast, [0, 1], [0, 12]) }],
-      position: "absolute" as const,
-      left: 0,
-      right: 0,
     };
   });
 
@@ -124,50 +108,66 @@ export default function OnboardingScreen() {
     [pageWidth, progress]
   );
 
+  const onMomentumScrollEnd = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const x = e.nativeEvent.contentOffset.x;
+      const next = Math.round(pageWidth > 0 ? x / pageWidth : 0);
+      const clamped = Math.max(0, Math.min(SLIDES.length - 1, next));
+      setIndex(clamped);
+      progress.value = withTiming(clamped, {
+        duration: 180,
+        easing: Easing.out(Easing.cubic),
+      });
+    },
+    [pageWidth, progress]
+  );
+
   const titleSize = compact ? 24 : 28;
   const bodySize = compact ? 15 : 16;
 
   const renderItem = useCallback(
     ({ item }: { item: (typeof SLIDES)[number] }) => (
-      <View style={{ width: pageWidth, paddingHorizontal: 2 }}>
+      <View style={{ width: pageWidth }}>
         <GlassCard>
-          <Text
-            style={{
-              color: item.accent,
-              fontFamily: "DMSans_500Medium",
-              fontSize: 12,
-              letterSpacing: 1.4,
-              textTransform: "uppercase",
-              marginBottom: 10,
-            }}
-          >
-            {item.eyebrow}
-          </Text>
-          <Text
-            style={{
-              color: colors.ink,
-              fontFamily: "Fraunces_600SemiBold",
-              fontSize: titleSize,
-              lineHeight: titleSize + 8,
-              marginBottom: 12,
-            }}
-          >
-            {item.title}
-          </Text>
-          <Text
-            style={{
-              color: colors.muted,
-              fontFamily: "DMSans_400Regular",
-              fontSize: bodySize,
-              lineHeight: bodySize + 8,
-            }}
-          >
-            {item.body}
-          </Text>
+          <View style={{ minHeight: cardInnerMin }}>
+            <Text
+              style={{
+                color: item.accent,
+                fontFamily: "DMSans_500Medium",
+                fontSize: 12,
+                letterSpacing: 1.4,
+                textTransform: "uppercase",
+                marginBottom: 10,
+              }}
+            >
+              {item.eyebrow}
+            </Text>
+            <Text
+              style={{
+                color: colors.ink,
+                fontFamily: "Fraunces_600SemiBold",
+                fontSize: titleSize,
+                lineHeight: titleSize + 8,
+                marginBottom: 12,
+              }}
+            >
+              {item.title}
+            </Text>
+            <Text
+              style={{
+                color: colors.muted,
+                fontFamily: "DMSans_400Regular",
+                fontSize: bodySize,
+                lineHeight: bodySize + 8,
+              }}
+            >
+              {item.body}
+            </Text>
+          </View>
         </GlassCard>
       </View>
     ),
-    [pageWidth, titleSize, bodySize]
+    [pageWidth, cardInnerMin, titleSize, bodySize]
   );
 
   return (
@@ -210,11 +210,14 @@ export default function OnboardingScreen() {
               index: i,
             })}
             onScroll={onScroll}
+            onMomentumScrollEnd={onMomentumScrollEnd}
             scrollEventThrottle={16}
-            onViewableItemsChanged={onViewableItemsChanged}
-            viewabilityConfig={viewabilityConfig}
             renderItem={renderItem}
-            style={{ flexGrow: 0 }}
+            style={{
+              flexGrow: 0,
+              marginHorizontal: -horizontalPad,
+              width: pageWidth,
+            }}
           />
 
           <View
@@ -240,11 +243,11 @@ export default function OnboardingScreen() {
           </View>
         </View>
 
-        {/* CTA dock */}
-        <View style={{ minHeight: compact ? 140 : 158, marginTop: compact ? 12 : 18 }}>
-          <View style={{ minHeight: compact ? 136 : 150 }}>
+        {/* CTA dock — both button pairs share the same bottom slot */}
+        <View style={{ marginTop: compact ? 12 : 18 }}>
+          <View style={{ height: 52 + 12 + 52, position: "relative" }}>
             <Animated.View
-              style={nextStyle}
+              style={[nextStyle, { position: "absolute", left: 0, right: 0, bottom: 0 }]}
               pointerEvents={index < SLIDES.length - 1 ? "auto" : "none"}
             >
               <Button title="Continue" onPress={goNext} />
@@ -253,7 +256,7 @@ export default function OnboardingScreen() {
             </Animated.View>
 
             <Animated.View
-              style={ctaStyle}
+              style={[ctaStyle, { position: "absolute", left: 0, right: 0, bottom: 0 }]}
               pointerEvents={index === SLIDES.length - 1 ? "auto" : "none"}
             >
               <Button title="Get started" onPress={() => go("/(auth)/signup")} />
@@ -263,31 +266,37 @@ export default function OnboardingScreen() {
                 variant="secondary"
                 onPress={() => go("/(auth)/signin")}
               />
-              <View
-                style={{
+            </Animated.View>
+          </View>
+
+          {index === SLIDES.length - 1 ? (
+            <Animated.View
+              style={[
+                ctaStyle,
+                {
                   flexDirection: "row",
                   justifyContent: "center",
                   flexWrap: "wrap",
                   marginTop: 14,
                   gap: 4,
-                }}
-              >
-                <Pressable onPress={() => router.push("/(legal)/privacy")} hitSlop={8}>
-                  <Text style={{ color: colors.secondary, fontFamily: "DMSans_500Medium", fontSize: 13 }}>
-                    Privacy Policy
-                  </Text>
-                </Pressable>
-                <Text style={{ color: colors.muted, fontFamily: "DMSans_400Regular", fontSize: 13 }}>
-                  ·
+                },
+              ]}
+            >
+              <Pressable onPress={() => router.push("/(legal)/privacy")} hitSlop={8}>
+                <Text style={{ color: colors.secondary, fontFamily: "DMSans_500Medium", fontSize: 13 }}>
+                  Privacy Policy
                 </Text>
-                <Pressable onPress={() => router.push("/(legal)/terms")} hitSlop={8}>
-                  <Text style={{ color: colors.secondary, fontFamily: "DMSans_500Medium", fontSize: 13 }}>
-                    Terms of Service
-                  </Text>
-                </Pressable>
-              </View>
+              </Pressable>
+              <Text style={{ color: colors.muted, fontFamily: "DMSans_400Regular", fontSize: 13 }}>
+                ·
+              </Text>
+              <Pressable onPress={() => router.push("/(legal)/terms")} hitSlop={8}>
+                <Text style={{ color: colors.secondary, fontFamily: "DMSans_500Medium", fontSize: 13 }}>
+                  Terms of Service
+                </Text>
+              </Pressable>
             </Animated.View>
-          </View>
+          ) : null}
         </View>
       </View>
     </Screen>
