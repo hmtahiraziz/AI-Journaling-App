@@ -151,7 +151,7 @@ export function WriteWidgetGrid() {
         </ActionTile>
 
         <ActionTile
-          onPress={() => router.push("/(app)/(tabs)/mood")}
+          onPress={() => router.push("/(app)/mood")}
           accessibilityLabel="Log mood"
           backgroundColor={colors.mint}
           borderRadius={radii.tile}

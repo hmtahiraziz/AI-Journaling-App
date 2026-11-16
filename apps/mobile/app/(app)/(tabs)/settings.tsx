@@ -310,7 +310,7 @@ export default function SettingsScreen() {
             icon="happy-outline"
             label="Mood check-ins"
             value="Quick carousel & week view"
-            onPress={() => router.push("/(app)/(tabs)/mood")}
+            onPress={() => router.push("/(app)/mood")}
           />
         </GlassCard>
 
