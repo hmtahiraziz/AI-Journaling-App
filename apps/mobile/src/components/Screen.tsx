@@ -18,6 +18,11 @@ type ScreenProps = ViewProps & {
   edges?: ("top" | "bottom" | "left" | "right")[];
   /** Quieter ambient blobs — better contrast for dense lists (Journal). */
   ambient?: "default" | "subtle" | "none";
+  /**
+   * ScrollView keyboard dismiss behavior.
+   * Default `none` so dragging to the next field keeps the keyboard open.
+   */
+  keyboardDismissMode?: "none" | "on-drag" | "interactive";
 };
 
 export function Screen({
@@ -26,6 +31,7 @@ export function Screen({
   padded = true,
   edges = ["top", "left", "right"],
   ambient = "default",
+  keyboardDismissMode = "none",
   className,
   ...rest
 }: ScreenProps & { className?: string }) {
@@ -50,7 +56,7 @@ export function Screen({
         paddingTop: padded ? topBreathing : 0,
       }}
       keyboardShouldPersistTaps="handled"
-      keyboardDismissMode="on-drag"
+      keyboardDismissMode={keyboardDismissMode}
       showsVerticalScrollIndicator={false}
       bounces
     >
